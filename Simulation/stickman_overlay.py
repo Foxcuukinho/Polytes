@@ -12,15 +12,14 @@ class StickmanOverlay(QWidget):
         self.stickman = stickman
         self.center_on_screen()
 
+        self.resize(self.stickman.width, self.stickman.height)
+
         self.setAttribute(Qt.WA_TranslucentBackground)
         self.setWindowFlags(
             Qt.Window |
             Qt.FramelessWindowHint |
             Qt.WindowStaysOnTopHint
         )
-
-
-        self.resize(self.stickman.width, self.stickman.height)
 
         self.drag_offset_x = 0
         self.drag_offset_y = 0

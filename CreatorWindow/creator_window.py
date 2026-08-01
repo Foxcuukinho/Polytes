@@ -17,7 +17,7 @@ class CreatorWindow(QWidget):
         self.selected_color = QColor("#8ABBD8")
 
         self.setWindowTitle("Criador de stickman")
-        self.resize(250, 400)
+        self.setFixedSize(250, 400)
 
         layout = QVBoxLayout(self)
         layout.setContentsMargins(12, 12, 12, 12)
