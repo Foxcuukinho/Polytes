@@ -1,4 +1,4 @@
-from Utils.utils import STICKMAN_WIDTH, STICKMAN_HEIGHT, STICKMAN_DEFAULT_DECIDE_COOLDOWN, DEFAULT_ANIMATION_CYCLE_DURATION
+from Utils.utils import STICKMAN_WIDTH, STICKMAN_HEIGHT, STICKMAN_DEFAULT_DECIDE_COOLDOWN, DEFAULT_ANIMATION_CYCLE_DURATION, FILLED_HEAD_DIAMETER, HOLLOW_HEAD_DIAMETER
 from Brain.stickman_personality import generate_personality
 from Animation.animations import ANIMATIONS
 
@@ -20,8 +20,14 @@ class Stickman:
         self.y = 0
         self.velocity_y = 0
         self.velocity_x = 0
+
+        # Misc
+        self.head_radius = HOLLOW_HEAD_DIAMETER //2 if self.hollow_head else FILLED_HEAD_DIAMETER // 2
+
+        # Ragdol
         self.dragging = False
-    
+        self.grab_part = None
+
         # Cerébro
         self.state = 'IDLE'
 
@@ -46,3 +52,4 @@ class Stickman:
 
         print(f'Energy: {self.energy}')
         print(f'Curiosity: {self.curiosity}')
+

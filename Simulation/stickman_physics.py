@@ -1,5 +1,6 @@
-from Utils.utils import GRAVITY_ACCELERATION, DELTA_TIME, DEFAULT_WALK_SPEED
+from Utils.utils import GRAVITY_ACCELERATION, DELTA_TIME, DEFAULT_WALK_SPEED, STROKE
 from Utils.screen import get_screen_geometry
+from Body.body_physics import solve_body
 
 class StickmanPhysics:
 
@@ -7,6 +8,7 @@ class StickmanPhysics:
         self.screen_x, self.screen_y, self.screen_width, self.screen_height = get_screen_geometry()
 
     def update(self,stickman):
+        self.apply_ragdoll(stickman)
         self.apply_gravity(stickman)
         self.resolve_ground_collision(stickman)
         self.resolve_edge_collision(stickman)
@@ -21,6 +23,9 @@ class StickmanPhysics:
 
     def resolve_ground_collision(self, stickman):
 
+        if stickman.dragging:
+            return
+
         feet_y = stickman.y + stickman.height
         ground_y = self.screen_height 
 
@@ -29,6 +34,8 @@ class StickmanPhysics:
             stickman.y = ground_y - stickman.height
 
     def resolve_edge_collision(self, stickman):
+
+
         
         stickman_right_edge = stickman.x + stickman.width
         screen_right_edge = self.screen_x + self.screen_width
@@ -54,4 +61,47 @@ class StickmanPhysics:
             stickman.velocity_x = DEFAULT_WALK_SPEED
  
             stickman.x += stickman.velocity_x * stickman.direction * DELTA_TIME 
-        
+
+    def apply_ragdoll(self, stickman):
+        if not stickman.dragging:
+            return
+
+        for ragpoint in stickman.ragpoints:
+
+            if ragpoint == stickman.grab_part:
+                continue
+
+            stickman.ragpoints[ragpoint].update()
+
+        for _ in range(20):
+            solve_body(stickman.ragpoints, stickman.head_radius, stickman.grab_part)
+
+        head_margin = stickman.head_radius * 2
+        joint_margin = STROKE + 1 // 2
+
+        # + 1 só pra uma folga mais folgada
+
+        min_x = min(
+            point.x - (head_margin if name == "head" else joint_margin)
+            for name, point in stickman.ragpoints.items()
+        )
+
+        min_y = min(
+            point.y - (head_margin if name == "head" else joint_margin)
+            for name, point in stickman.ragpoints.items()
+        )
+
+        max_x = max(
+            point.x + (head_margin if name == "head" else joint_margin)
+            for name, point in stickman.ragpoints.items()
+        )
+
+        max_y = max(
+            point.y + (head_margin if name == "head" else joint_margin)
+            for name, point in stickman.ragpoints.items()
+        )
+
+        stickman.x = int(min_x)
+        stickman.y = int(min_y)
+        stickman.width = int(max_x - min_x)
+        stickman.height = int(max_y - min_y)
