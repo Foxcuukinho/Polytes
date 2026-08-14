@@ -2,7 +2,7 @@ from PyQt5.QtGui import QPainter, QPen, QPainterPath, QBrush
 from PyQt5.QtCore import Qt
 from Body.body_physics import calculate_joints
 from Utils.utils import HOLLOW_HEAD_DIAMETER, FILLED_HEAD_DIAMETER, STROKE
-
+   
 def draw_head(painter, head, width, height):
     painter.drawEllipse(head[0], head[1], width, height)
 
@@ -14,7 +14,6 @@ def draw_arm(painter, neck, control, hand):
     path.moveTo(neck[0], neck[1])
     path.quadTo(control[0], control[1], hand[0], hand[1])
     painter.drawPath(path)
-
 
 def draw_leg(painter, hip, control, foot):
     path = QPainterPath()
@@ -47,8 +46,8 @@ def draw_stickman(painter, stickman):
 
 
 
-    if stickman.direction == 1 and not stickman.dragging:
-            painter.translate(stickman.width, 0)
+    if stickman.direction == 1 and not stickman.holding:
+            painter.translate(2 * stickman.x + stickman.width, 0)
             painter.scale(-1, 1)
     
     joints = calculate_joints(frame, stickman, head_radius)

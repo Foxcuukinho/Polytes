@@ -10,7 +10,10 @@ class MockStickman:
         self.hollow_head = hollow_head
         self.width = STICKMAN_WIDTH
         self.height = STICKMAN_HEIGHT
-        self.dragging = False
+        self.x = 0
+        self.y = 0
+        self.holding = False
+        self.flying = False
         self.direction = 1
         self.current_frame = {
     "torso_angle": -90,

@@ -20,7 +20,7 @@ class StickmanBrain:
         score_idle = self.score_idle(stickman)
         score_walk = self.score_walk(stickman)
 
-        if score_walk > score_idle + SCORE_MARGIN and not stickman.dragging:
+        if score_walk > score_idle + SCORE_MARGIN and not stickman.holding:
             stickman.state = 'WALK'
             stickman.target_x = self.choose_target_x(stickman)
 

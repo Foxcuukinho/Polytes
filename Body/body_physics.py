@@ -1,6 +1,6 @@
 import math
 from Animation.rig import RIG
-from Utils.utils import HIP_HEIGHT_FROM_TOP, STROKE, polar_point, DELTA_TIME, GRAVITY_ACCELERATION
+from Utils.utils import HIP_HEIGHT_FROM_TOP, STROKE, polar_point, DELTA_TIME, GRAVITY_ACCELERATION, RAGDOLL_DAMPING, RAGDOLL_STIFFNES
 
 
 class RagPoint:
@@ -15,28 +15,27 @@ class RagPoint:
 
     def update(self):
 
-        new_x = self.x + ( self.x - self.old_x)
+        new_x = self.x + ( self.x - self.old_x) * RAGDOLL_DAMPING
         self.old_x = self.x
         self.x = new_x
 
-        new_y = self.y + ( self.y - self.old_y) + GRAVITY_ACCELERATION * DELTA_TIME
+        new_y = self.y + ( self.y - self.old_y) * RAGDOLL_DAMPING + GRAVITY_ACCELERATION * DELTA_TIME
         self.old_y = self.y
         self.y = new_y
-
 
 def calculate_joints(frame, stickman, head_radius):
 
     joints = {}
 
-    if stickman.dragging:
+    if stickman.holding or stickman.flying:
         return ragdoll_to_joints(stickman.ragpoints, head_radius, stickman.grab_part, stickman.x, stickman.y)
 
     else:
         for joint in RIG:
 
             if joint['name'] == 'hip':
-                hip_x = stickman.width // 2
-                position = (hip_x, HIP_HEIGHT_FROM_TOP)
+                hip_x = int(stickman.width // 2 + stickman.x)
+                position = (hip_x, int(HIP_HEIGHT_FROM_TOP + stickman.y))
                 joints[joint["name"]] = {
                     "position": position,
                     "angle": 0
@@ -73,16 +72,15 @@ def calculate_joints(frame, stickman, head_radius):
                 "angle": angle
             }
 
-        joints = adjust_feet_ground(joints, stickman.height)
+        joints = adjust_feet_ground(joints, stickman.height, stickman.y)
         
     return joints
 
-
-def adjust_feet_ground(joints, stickman_height):
+def adjust_feet_ground(joints, stickman_height, stickman_y):
 
     lowest_foot = 'right_foot' if joints['right_foot']['position'][1] >= joints['left_foot']['position'][1] else 'left_foot'
 
-    offset_y = stickman_height - joints[lowest_foot]['position'][1] - STROKE // 2 
+    offset_y = int(stickman_height + stickman_y - joints[lowest_foot]['position'][1] - STROKE // 2)
     for joint in joints:
                 joints[joint]['position'] = (
                     joints[joint]['position'][0],
@@ -108,36 +106,29 @@ def solve_bone(origin, end, rest, grab):
 
     if grab is None:
 
-        adjust_x = (distance_error / 2) * direction_x
-        adjust_y = (distance_error / 2) * direction_y
+        adjust_x = (distance_error / 2) * direction_x * RAGDOLL_STIFFNES
+        adjust_y = (distance_error / 2) * direction_y * RAGDOLL_STIFFNES
 
-        origin.old_x = origin.x
-        origin.old_y = origin.y
         origin.x -= adjust_x
         origin.y -= adjust_y
 
-        end.old_x = end.x
-        end.old_y = end.y
         end.x += adjust_x
         end.y += adjust_y
 
     elif grab == "origin":
 
-        adjust_x = distance_error * direction_x
-        adjust_y = distance_error * direction_y
+        adjust_x = distance_error * direction_x * RAGDOLL_STIFFNES
+        adjust_y = distance_error * direction_y * RAGDOLL_STIFFNES
 
-        end.old_x = end.x
-        end.old_y = end.y
         end.x += adjust_x
         end.y += adjust_y
 
     elif grab == "end":
 
-        adjust_x = distance_error * direction_x
-        adjust_y = distance_error * direction_y
+        adjust_x = distance_error * direction_x * RAGDOLL_STIFFNES
+        adjust_y = distance_error * direction_y * RAGDOLL_STIFFNES
 
-        origin.old_x = origin.x
-        origin.old_y = origin.y
+
         origin.x -= adjust_x
         origin.y -= adjust_y
 
@@ -148,8 +139,8 @@ def create_ragpoints(joints, stickman_x, stickman_y):
 
     for joint in joints:
 
-        x = joints[joint]['position'][0] + stickman_x
-        y = joints[joint]['position'][1] + stickman_y
+        x = joints[joint]['position'][0]
+        y = joints[joint]['position'][1]
 
         ragpoints[joint] = RagPoint(x,y)
 
@@ -184,8 +175,8 @@ def ragdoll_to_joints(ragpoints, head_radius, grab_part, stickman_x, stickman_y)
 
     for ragpoint in ragpoints:
 
-        x = ragpoints[ragpoint].x - stickman_x
-        y = ragpoints[ragpoint].y - stickman_y
+        x = ragpoints[ragpoint].x 
+        y = ragpoints[ragpoint].y 
 
         joints[ragpoint] = {}
         joints[ragpoint]['position'] = (int(x), int(y))
@@ -198,15 +189,17 @@ def get_drag_part(stickman, mouse_x, mouse_y):
 
     for joint in stickman.joints:
 
-        joint_x = stickman.x + stickman.joints[joint]['position'][0]
-        joint_y = stickman.y + stickman.joints[joint]['position'][1]
+        joint_x = stickman.joints[joint]['position'][0]
+        joint_y =  stickman.joints[joint]['position'][1]
 
         distance_x = joint_x- mouse_x
         distance_y = joint_y- mouse_y
         
         distance = math.sqrt(distance_x ** 2 + distance_y ** 2)
 
-        if distance < 15:
+        radius = stickman.head_radius  if joint == "head" else 10
+
+        if distance < radius:
 
             eligible_joints.append((joint, distance))
 
@@ -214,3 +207,12 @@ def get_drag_part(stickman, mouse_x, mouse_y):
         return None
     else:
         return min(eligible_joints, key=lambda t: t[1])[0]
+
+def move_grab_part(stickman, mouse_x, mouse_y, offset_x, offset_y):
+
+    for ragpoint in stickman.ragpoints:
+        if ragpoint == stickman.grab_part:
+
+            stickman.ragpoints[ragpoint].x = stickman.ragpoints[ragpoint].old_x = mouse_x - offset_x
+            stickman.ragpoints[ragpoint].y = stickman.ragpoints[ragpoint].old_y = mouse_y - offset_y
+            

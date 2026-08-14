@@ -15,7 +15,7 @@ class StickmanPhysics:
         self.apply_walk_movement(stickman)
 
     def apply_gravity(self, stickman):
-        if stickman.dragging:
+        if stickman.holding or stickman.flying:
             return
         
         stickman.velocity_y += GRAVITY_ACCELERATION * DELTA_TIME
@@ -23,7 +23,7 @@ class StickmanPhysics:
 
     def resolve_ground_collision(self, stickman):
 
-        if stickman.dragging:
+        if stickman.holding or stickman.flying:
             return
 
         feet_y = stickman.y + stickman.height
@@ -35,7 +35,8 @@ class StickmanPhysics:
 
     def resolve_edge_collision(self, stickman):
 
-
+        if stickman.holding or stickman.flying:
+            return
         
         stickman_right_edge = stickman.x + stickman.width
         screen_right_edge = self.screen_x + self.screen_width
@@ -49,7 +50,7 @@ class StickmanPhysics:
 
     def apply_walk_movement(self, stickman):
 
-        if stickman.dragging:
+        if stickman.holding or stickman.flying:
             return
 
         if stickman.state == 'WALK':
@@ -62,42 +63,69 @@ class StickmanPhysics:
  
             stickman.x += stickman.velocity_x * stickman.direction * DELTA_TIME 
 
+    def check_ground_contact(self, stickman):
+        if not stickman.flying:
+            return
+
+        max_y = max(
+            point.y
+            for point in stickman.ragpoints.values()
+        )
+
+        ground_y = self.screen_y + self.screen_height
+
+        if max_y >= ground_y:
+            stickman.flying = False
+
     def apply_ragdoll(self, stickman):
-        if not stickman.dragging:
+        if not (stickman.holding or stickman.flying):
             return
 
         for ragpoint in stickman.ragpoints:
-
             if ragpoint == stickman.grab_part:
                 continue
 
             stickman.ragpoints[ragpoint].update()
 
-        for _ in range(20):
-            solve_body(stickman.ragpoints, stickman.head_radius, stickman.grab_part)
+        for _ in range(200):
+            solve_body(
+                stickman.ragpoints,
+                stickman.head_radius,
+                stickman.grab_part
+            )
 
         head_margin = stickman.head_radius * 2
         joint_margin = STROKE + 1 // 2
 
-        # + 1 só pra uma folga mais folgada
-
         min_x = min(
-            point.x - (head_margin if name == "head" else joint_margin)
+            point.x - (
+                head_margin if name == "head"
+                else joint_margin
+            )
             for name, point in stickman.ragpoints.items()
         )
 
         min_y = min(
-            point.y - (head_margin if name == "head" else joint_margin)
+            point.y - (
+                head_margin if name == "head"
+                else joint_margin
+            )
             for name, point in stickman.ragpoints.items()
         )
 
         max_x = max(
-            point.x + (head_margin if name == "head" else joint_margin)
+            point.x + (
+                head_margin if name == "head"
+                else joint_margin
+            )
             for name, point in stickman.ragpoints.items()
         )
 
         max_y = max(
-            point.y + (head_margin if name == "head" else joint_margin)
+            point.y + (
+                head_margin if name == "head"
+                else joint_margin
+            )
             for name, point in stickman.ragpoints.items()
         )
 
@@ -105,3 +133,5 @@ class StickmanPhysics:
         stickman.y = int(min_y)
         stickman.width = int(max_x - min_x)
         stickman.height = int(max_y - min_y)
+
+        self.check_ground_contact(stickman)

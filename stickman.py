@@ -1,6 +1,7 @@
 from Utils.utils import STICKMAN_WIDTH, STICKMAN_HEIGHT, STICKMAN_DEFAULT_DECIDE_COOLDOWN, DEFAULT_ANIMATION_CYCLE_DURATION, FILLED_HEAD_DIAMETER, HOLLOW_HEAD_DIAMETER
 from Brain.stickman_personality import generate_personality
 from Animation.animations import ANIMATIONS
+from Body.body_physics import calculate_joints, create_ragpoints
 
 class Stickman:
 
@@ -25,7 +26,8 @@ class Stickman:
         self.head_radius = HOLLOW_HEAD_DIAMETER //2 if self.hollow_head else FILLED_HEAD_DIAMETER // 2
 
         # Ragdol
-        self.dragging = False
+        self.holding = False
+        self.flying = False
         self.grab_part = None
 
         # Cerébro
@@ -52,4 +54,7 @@ class Stickman:
 
         print(f'Energy: {self.energy}')
         print(f'Curiosity: {self.curiosity}')
+
+        self.joints = calculate_joints(self.current_frame, self, self.head_radius)
+        self.ragpoints = create_ragpoints(self.joints, self.x, self.y)
 
