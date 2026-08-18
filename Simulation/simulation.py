@@ -1,5 +1,5 @@
 from PyQt5.QtCore import QTimer
-from Utils.utils import FRAME_DURATION_MS
+from Utils.constants import FRAME_DURATION_MS
 
 class Simulation:
 

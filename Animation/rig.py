@@ -1,4 +1,4 @@
-from Utils.utils import (
+from Utils.constants import (
     TORSO_LENGTH,
     UPPER_ARM_LENGTH,
     FOREARM_LENGTH,

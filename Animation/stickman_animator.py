@@ -1,4 +1,4 @@
-from Utils.utils import DELTA_TIME, DISTANCE_PER_WALK_CYCLE
+from Utils.constants import DELTA_TIME, DISTANCE_PER_WALK_CYCLE
 from Animation.animations import ANIMATIONS
 
 class StickmanAnimator:

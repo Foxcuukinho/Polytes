@@ -1,4 +1,8 @@
-from Utils.utils import STICKMAN_WIDTH, STICKMAN_HEIGHT, STICKMAN_DEFAULT_DECIDE_COOLDOWN, DEFAULT_ANIMATION_CYCLE_DURATION, FILLED_HEAD_DIAMETER, HOLLOW_HEAD_DIAMETER
+from Utils.constants import (
+    STICKMAN_WIDTH, STICKMAN_HEIGHT,FILLED_HEAD_DIAMETER, HOLLOW_HEAD_DIAMETER,
+    STICKMAN_DEFAULT_DECIDE_COOLDOWN, DEFAULT_ANIMATION_CYCLE_DURATION
+)
+
 from Brain.stickman_personality import generate_personality
 from Animation.animations import ANIMATIONS
 from Body.body_physics import calculate_joints, create_ragpoints

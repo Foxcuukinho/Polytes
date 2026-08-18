@@ -1,7 +1,7 @@
 from PyQt5.QtWidgets import QWidget
 from PyQt5.QtGui import QPainter, QColor, QBrush, QPen
 from PyQt5.QtCore import Qt
-from Utils.utils import STICKMAN_WIDTH, STICKMAN_HEIGHT
+from Utils.constants import STICKMAN_WIDTH, STICKMAN_HEIGHT
 from Animation.draw_stickman import draw_stickman
 
 class MockStickman:

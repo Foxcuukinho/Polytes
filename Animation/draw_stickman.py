@@ -1,7 +1,7 @@
 from PyQt5.QtGui import QPainter, QPen, QPainterPath, QBrush
 from PyQt5.QtCore import Qt
 from Body.body_physics import calculate_joints
-from Utils.utils import HOLLOW_HEAD_DIAMETER, FILLED_HEAD_DIAMETER, STROKE
+from Utils.constants import HOLLOW_HEAD_DIAMETER, FILLED_HEAD_DIAMETER, STROKE
    
 def draw_head(painter, head, width, height):
     painter.drawEllipse(head[0], head[1], width, height)

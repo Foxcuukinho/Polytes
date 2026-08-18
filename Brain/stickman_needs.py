@@ -1,4 +1,5 @@
-from Utils.utils import DELTA_TIME, clamp
+from Utils.constants import DELTA_TIME
+from Utils.helpers import clamp
 
 class StickmanNeeds:
     def update(self, stickman):

@@ -1,6 +1,6 @@
 import random
-from Utils.utils import DELTA_TIME, SCORE_MARGIN, STICKMAN_DEFAULT_DECIDE_COOLDOWN
-from Utils.screen import get_screen_geometry
+from Utils.constants import DELTA_TIME, SCORE_MARGIN, STICKMAN_DEFAULT_DECIDE_COOLDOWN
+from Utils.helpers import get_screen_geometry
 
 class StickmanBrain:
 

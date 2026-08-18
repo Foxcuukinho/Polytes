@@ -1,7 +1,7 @@
 from PyQt5.QtWidgets import QWidget, QPushButton, QColorDialog, QLineEdit, QCheckBox, QVBoxLayout, QHBoxLayout, QLabel
 from PyQt5.QtGui import QColor
 from CreatorWindow.preview_widget import StickmanPreview
-from Utils.utils import STICKMAN_WIDTH, STICKMAN_HEIGHT
+from Utils.constants import STICKMAN_WIDTH, STICKMAN_HEIGHT
 from CreatorWindow.widgets import ToggleSwitch
 
 from PyQt5.QtWidgets import QCheckBox
@@ -13,18 +13,24 @@ class CreatorWindow(QWidget):
     def __init__(self, manager):
         super().__init__()
 
+  
         self.manager = manager
         self.selected_color = QColor("#8ABBD8")
 
+  
         self.setWindowTitle("Criador de stickman")
         self.setFixedSize(250, 400)
+
+        self.setStyleSheet("background-color: #f9f9f9;")
 
         layout = QVBoxLayout(self)
         layout.setContentsMargins(12, 12, 12, 12)
         layout.setSpacing(10)
 
+
         self.preview = StickmanPreview(self.selected_color, False)
 
+ 
         self.name_label = QLabel('Name:')
         self.name_input = QLineEdit()
         self.name_input.setPlaceholderText("Untitled")
@@ -34,7 +40,7 @@ class CreatorWindow(QWidget):
 
         self.hollow_head_label = QLabel('Hollow Head')
         self.hollow_head_checkbox = ToggleSwitch()
-    
+
         layout.addWidget(self.preview, 1)  # ocupa o espaço disponível
 
         name_layout = QHBoxLayout()

@@ -1,5 +1,5 @@
 import random
-from Utils.utils import seed_from_name, clamp
+from Utils.helpers import seed_from_name, clamp
 
 def generate_base_traits(seed):
     rng = random.Random(seed)

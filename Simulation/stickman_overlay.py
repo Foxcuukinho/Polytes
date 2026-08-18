@@ -2,8 +2,8 @@ from PyQt5.QtWidgets import QApplication, QWidget
 from PyQt5.QtGui import QPainter, QColor,QPen, QRegion
 from PyQt5.QtCore import Qt
 from Animation.draw_stickman import draw_stickman
-from Utils.screen import get_screen_geometry
-from Utils.utils import STICKMAN_WIDTH, STICKMAN_HEIGHT
+from Utils.helpers import get_screen_geometry
+from Utils.constants import STICKMAN_WIDTH, STICKMAN_HEIGHT
 from Body.body_physics import calculate_joints, create_ragpoints, get_drag_part, move_grab_part
 
 class StickmanOverlay(QWidget):
@@ -56,12 +56,11 @@ class StickmanOverlay(QWidget):
             # O offset permite que o stickman não se teleporte para a ponta do mouse ao ser clicado
             self.drag_offset_x = mouse_x - self.stickman.joints[self.stickman.grab_part]['position'][0]
             self.drag_offset_y = mouse_y - self.stickman.joints[self.stickman.grab_part]['position'][1]
+            self.stickman.flying = False
+            
 
         self.stickman.holding = bool(self.stickman.grab_part)
-        self.stickman.flying = False
-
-            
-        print(self.stickman.grab_part)
+        
 
     def mouseMoveEvent(self, event):
         if not self.stickman.holding:
@@ -75,7 +74,6 @@ class StickmanOverlay(QWidget):
 
         self.drag_velocity_y = mouse_y - self.mouse_old_y
         self.mouse_old_y = mouse_y
-        print(self.drag_velocity_x, self.drag_velocity_y)
     
         #self.stickman.x = mouse_x - self.drag_offset_x
         #self.stickman.y = mouse_y - self.drag_offset_y
@@ -108,6 +106,12 @@ class StickmanOverlay(QWidget):
         self.stickman.y = screen_y + screen_height / 2 - (self.stickman.height / 2)
 
     def update_position(self):
+
+        flags = self.windowFlags()
+
+        self.setWindowFlags(flags | Qt.WindowStaysOnTopHint)
+
+        self.show()
         self.update()
         self.update_mask()
 

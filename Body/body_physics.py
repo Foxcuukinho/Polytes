@@ -1,6 +1,7 @@
 import math
 from Animation.rig import RIG
-from Utils.utils import HIP_HEIGHT_FROM_TOP, STROKE, polar_point, DELTA_TIME, GRAVITY_ACCELERATION, RAGDOLL_DAMPING, RAGDOLL_STIFFNES
+from Utils.constants import HIP_HEIGHT_FROM_TOP, STROKE, DELTA_TIME, RAGDOLL_ACCELERATION, RAGDOLL_DAMPING, RAGDOLL_STIFFNES, RAGPOINT_RADIUS
+from Utils.helpers import polar_point
 
 
 class RagPoint:
@@ -19,7 +20,7 @@ class RagPoint:
         self.old_x = self.x
         self.x = new_x
 
-        new_y = self.y + ( self.y - self.old_y) * RAGDOLL_DAMPING + GRAVITY_ACCELERATION * DELTA_TIME
+        new_y = self.y + ( self.y - self.old_y) * RAGDOLL_DAMPING + RAGDOLL_ACCELERATION * DELTA_TIME
         self.old_y = self.y
         self.y = new_y
 
@@ -197,7 +198,7 @@ def get_drag_part(stickman, mouse_x, mouse_y):
         
         distance = math.sqrt(distance_x ** 2 + distance_y ** 2)
 
-        radius = stickman.head_radius  if joint == "head" else 10
+        radius = stickman.head_radius  if joint == "head" else RAGPOINT_RADIUS // 2
 
         if distance < radius:
 
