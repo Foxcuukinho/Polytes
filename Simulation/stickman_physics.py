@@ -1,6 +1,6 @@
 
-from Utils.constants import GRAVITY_ACCELERATION, DELTA_TIME, DEFAULT_WALK_SPEED, STROKE, RAGDOLL_BOUNCE_FACTOR, RAGPOINT_RADIUS
-from Utils.helpers import get_screen_geometry, get_windows, rectangle_overlap
+from Utils.constants import GRAVITY_ACCELERATION, DELTA_TIME, DEFAULT_WALK_SPEED, STROKE, RAGDOLL_BOUNCE_FACTOR, RAGPOINT_RADIUS, STICKMAN_WIDTH, STICKMAN_HEIGHT
+from Utils.helpers import get_screen_geometry, get_windows, detect_collision_with_ragpoint_and_window
 from Body.body_physics import solve_body
 
 
@@ -29,7 +29,9 @@ class StickmanPhysics:
             return
 
         feet_y = stickman.y + stickman.height
-        ground_y = self.screen_height
+
+        max_y = max(point.y for point in stickman.ragpoints.values())
+        ground_y = self.compute_ground_y(stickman, max_y)
 
         if feet_y >= ground_y:
             stickman.velocity_y = 0
@@ -72,6 +74,29 @@ class StickmanPhysics:
 
     # TODO: Fazer uma classe StickmanRagdoll
 
+    def compute_ground_y(self, stickman, max_y):
+        candidates = [self.screen_y + self.screen_height]
+
+        for window in get_windows():
+            if window.top >= max_y:
+                candidates.append(window.top)
+
+        return min(candidates)
+
+        def resolve_flying_landing(self, stickman):
+            if not stickman.flying:
+                return
+
+            max_y = max(
+                point.y + (stickman.head_radius if name == 'head' else RAGPOINT_RADIUS)
+                for name, point in stickman.ragpoints.items()
+            )
+
+            stickman.ground_y = self.compute_ground_y(stickman, max_y)
+
+            if max_y >= stickman.ground_y:
+                stickman.flying = False
+    
     def resolve_flying_ground_contact(self, stickman):
         if not stickman.flying:
             return
@@ -137,21 +162,94 @@ class StickmanPhysics:
 
     def resolve_flying_window_collision(self, stickman):
 
+        if not stickman.flying:
+            return
+
         ragpoints = stickman.ragpoints
 
         for window in get_windows():
 
-            for ragpoint in ragpoints:
+            window_right = window.left + window.width
+            window_bottom = window.top + window.height
 
-                radius = stickman.head_radius if ragpoint == 'head' else RAGPOINT_RADIUS
+            for name, ragpoint in ragpoints.items():
 
-                overlap = rectangle_overlap(
-                    window.left, window.top, window.width, window.height,
-                    ragpoints[ragpoint].x - RAGPOINT_RADIUS, ragpoints[ragpoint].y - RAGPOINT_RADIUS, RAGPOINT_RADIUS * 2, RAGPOINT_RADIUS * 2
-                )
+                radius = stickman.head_radius if name == 'head' else RAGPOINT_RADIUS
+
+                overlap, left_collision, right_collision, top_collision, bottom_collision = \
+                    detect_collision_with_ragpoint_and_window(
+                        ragpoint,
+                        radius,
+                        window
+                    )
 
                 if overlap:
-                    print('Hit')
+
+                    min_x = min(
+                        point.x - (stickman.head_radius if point_name == 'head' else RAGPOINT_RADIUS)
+                        for point_name, point in ragpoints.items()
+                    )
+
+                    max_x = max(
+                        point.x + (stickman.head_radius if point_name == 'head' else RAGPOINT_RADIUS)
+                        for point_name, point in ragpoints.items()
+                    )
+
+                    min_y = min(
+                        point.y - (stickman.head_radius if point_name == 'head' else RAGPOINT_RADIUS)
+                        for point_name, point in ragpoints.items()
+                    )
+
+                    max_y = max(
+                        point.y + (stickman.head_radius if point_name == 'head' else RAGPOINT_RADIUS)
+                        for point_name, point in ragpoints.items()
+                    )
+
+                    if left_collision:
+
+                        offset_x = window.left - max_x
+
+                        for point in ragpoints.values():
+                            point.x += offset_x
+
+                        for point in ragpoints.values():
+                            vx = point.x - point.old_x
+                            point.old_x = point.x + vx * RAGDOLL_BOUNCE_FACTOR
+
+                    elif right_collision:
+
+                        offset_x = window_right - min_x
+
+                        for point in ragpoints.values():
+                            point.x += offset_x
+
+                        for point in ragpoints.values():
+                            vx = point.x - point.old_x
+                            point.old_x = point.x + vx * RAGDOLL_BOUNCE_FACTOR
+
+                    if top_collision:
+
+                        offset_y = window.top - max_y
+
+                        for point in ragpoints.values():
+                            point.y += offset_y
+
+                        for point in ragpoints.values():
+                            vy = point.y - point.old_y
+                            point.old_y = point.y + vy * RAGDOLL_BOUNCE_FACTOR
+
+                        self.resolve_flying_landing(stickman)
+
+                    elif bottom_collision:
+
+                        offset_y = window_bottom - min_y
+
+                        for point in ragpoints.values():
+                            point.y += offset_y
+
+                        for point in ragpoints.values():
+                            vy = point.y - point.old_y
+                            point.old_y = point.y + vy * RAGDOLL_BOUNCE_FACTOR
 
     def apply_ragdoll(self, stickman):
         if not (stickman.holding or stickman.flying):
@@ -175,44 +273,42 @@ class StickmanPhysics:
         self.resolve_flying_edge_collision(stickman)
         self.resolve_flying_window_collision(stickman)
 
-        head_margin = stickman.head_radius * 2
-        joint_margin = STROKE + 1 // 2
+        if stickman.flying:
 
-        min_x = min(
-            point.x - (
-                head_margin if name == "head"
-                else joint_margin
+            head_margin = stickman.head_radius * 2
+            joint_margin = STROKE + 1 // 2
+
+            min_x = min(
+                point.x - (head_margin if name == "head" else joint_margin)
+                for name, point in stickman.ragpoints.items()
             )
-            for name, point in stickman.ragpoints.items()
-        )
 
-        min_y = min(
-            point.y - (
-                head_margin if name == "head"
-                else joint_margin
+            min_y = min(
+                point.y - (head_margin if name == "head" else joint_margin)
+                for name, point in stickman.ragpoints.items()
             )
-            for name, point in stickman.ragpoints.items()
-        )
 
-        max_x = max(
-            point.x + (
-                head_margin if name == "head"
-                else joint_margin
+            max_x = max(
+                point.x + (head_margin if name == "head" else joint_margin)
+                for name, point in stickman.ragpoints.items()
             )
-            for name, point in stickman.ragpoints.items()
-        )
 
-        max_y = max(
-            point.y + (
-                head_margin if name == "head"
-                else joint_margin
+            max_y = max(
+                point.y + (head_margin if name == "head" else joint_margin)
+                for name, point in stickman.ragpoints.items()
             )
-            for name, point in stickman.ragpoints.items()
-        )
 
-        stickman.x = int(min_x)
-        stickman.y = int(min_y)
-        stickman.width = int(max_x - min_x)
-        stickman.height = int(max_y - min_y)
+            stickman.x = int(min_x)
+            stickman.y = int(min_y)
+            stickman.width = int(max_x - min_x)
+            stickman.height = int(max_y - min_y)
 
-        self.resolve_flying_ground_contact(stickman)
+        else:
+
+            stickman.width = STICKMAN_WIDTH
+            stickman.height = STICKMAN_HEIGHT
+
+            hip_x = stickman.ragpoints['hip'].x
+            stickman.x = int(hip_x - stickman.width / 2)
+            ground_y = stickman.ground_y if stickman.ground_y is not None else self.screen_y + self.screen_height
+            stickman.y = int(ground_y - stickman.height)

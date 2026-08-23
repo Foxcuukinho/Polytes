@@ -6,6 +6,8 @@ import math
 def clamp(value, min_value, max_value):
     return max(min_value, min(value, max_value))
 
+
+
 def rectangle_overlap(first_x, first_y, first_width, first_height,second_x, second_y, second_width, second_height):
 
     first_right = first_x + first_width
@@ -18,6 +20,60 @@ def rectangle_overlap(first_x, first_y, first_width, first_height,second_x, seco
 
     return not separated_horizontally and not separated_vertically
 
+def detect_collision_with_ragpoint_and_window(ragpoint, ragpoint_radius, window):
+
+    first_x, first_y, first_width, first_height = window.left, window.top, window.width, window.height
+
+    first_right, first_bottom = first_x + first_width, first_y + first_height
+
+    second_x, second_y = ragpoint.x - ragpoint_radius, ragpoint.y - ragpoint_radius
+    second_width, second_height = ragpoint_radius * 2, ragpoint_radius * 2
+
+    second_right, second_bottom = second_x + second_width, second_y + second_height
+
+    delta_x = abs(ragpoint.x - ragpoint.old_x)
+    delta_y = abs(ragpoint.y - ragpoint.old_y)
+
+    overlap = rectangle_overlap(
+        first_x, first_y, first_width, first_height,
+        second_x, second_y, second_width, second_height
+    )
+
+    if overlap:
+
+        left_collision = (
+            second_right > first_x and
+            second_right < first_right and
+            ragpoint.x > ragpoint.old_x and
+            delta_x > delta_y
+        )
+
+        right_collision = (
+            second_x < first_right and
+            second_x > first_x and
+            ragpoint.x < ragpoint.old_x and
+            delta_x > delta_y
+        )
+
+        top_collision = (
+            second_bottom > first_y and
+            second_bottom < first_bottom and
+            ragpoint.y > ragpoint.old_y and
+            delta_y > delta_x
+        )
+
+        bottom_collision = (
+            second_y < first_bottom and
+            second_y > first_y and
+            ragpoint.y < ragpoint.old_y and
+            delta_y > delta_x
+        )
+
+        return overlap, left_collision, right_collision, top_collision, bottom_collision
+
+    else:
+        return False, False, False, False, False
+      
 def seed_from_name(name):
     hash = hashlib.sha256(name.encode())
     number = int(hash.hexdigest(), 16)

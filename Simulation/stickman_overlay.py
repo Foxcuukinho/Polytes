@@ -96,8 +96,6 @@ class StickmanOverlay(QWidget):
         self.stickman.velocity_y = 0
         self.stickman.velocity_x = 0
 
-        self.stickman.width = STICKMAN_WIDTH
-        self.stickman.height = STICKMAN_HEIGHT
 
     def center_on_screen(self):
         screen_x, screen_y, screen_width, screen_height = get_screen_geometry()

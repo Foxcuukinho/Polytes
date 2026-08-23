@@ -25,6 +25,7 @@ class Stickman:
         self.y = 0
         self.velocity_y = 0
         self.velocity_x = 0
+        self.ground_y = None
 
         # Misc
         self.head_radius = HOLLOW_HEAD_DIAMETER //2 if self.hollow_head else FILLED_HEAD_DIAMETER // 2
