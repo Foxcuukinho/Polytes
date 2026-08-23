@@ -34,7 +34,7 @@ class StickmanManager:
             self.update_physics(stickman)
             self.update_animation(stickman)
             self.update_overlay(overlay)
-            print(stickman.flying, stickman.holding)
+      
 
     def update_physics(self, stickman):
         self.stickman_physics.update(stickman)

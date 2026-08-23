@@ -3,9 +3,12 @@ from Utils.constants import (
     STICKMAN_DEFAULT_DECIDE_COOLDOWN, DEFAULT_ANIMATION_CYCLE_DURATION
 )
 
+from Utils.helpers import get_screen_geometry
 from Brain.stickman_personality import generate_personality
 from Animation.animations import ANIMATIONS
 from Body.body_physics import calculate_joints, create_ragpoints
+
+
 
 class Stickman:
 
@@ -26,6 +29,8 @@ class Stickman:
         self.velocity_y = 0
         self.velocity_x = 0
         self.ground_y = None
+        screen_x, _, screen_width, _ = get_screen_geometry()
+        self.ground_limit = (screen_x, screen_width)
 
         # Misc
         self.head_radius = HOLLOW_HEAD_DIAMETER //2 if self.hollow_head else FILLED_HEAD_DIAMETER // 2

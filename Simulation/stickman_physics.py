@@ -1,20 +1,28 @@
-
-from Utils.constants import GRAVITY_ACCELERATION, DELTA_TIME, DEFAULT_WALK_SPEED, STROKE, RAGDOLL_BOUNCE_FACTOR, RAGPOINT_RADIUS, STICKMAN_WIDTH, STICKMAN_HEIGHT
+import time
+from Utils.constants import GRAVITY_ACCELERATION, DELTA_TIME, DEFAULT_WALK_SPEED, STROKE, RAGDOLL_BOUNCE_FACTOR, RAGPOINT_RADIUS, STICKMAN_WIDTH, STICKMAN_HEIGHT, WINDOW_UPDATE_INTERVAL_FRAMES
 from Utils.helpers import get_screen_geometry, get_windows, detect_collision_with_ragpoint_and_window
-from Body.body_physics import solve_body
+from Body.body_physics import solve_body, calculate_joints, create_ragpoints
 
 
 class StickmanPhysics:
 
     def __init__(self):
         self.screen_x, self.screen_y, self.screen_width, self.screen_height = get_screen_geometry()
+        self.windows = []
+        self.frames_since_window_update = 0
 
     def update(self, stickman):
+        self.frames_since_window_update += 1
+        if self.frames_since_window_update >= WINDOW_UPDATE_INTERVAL_FRAMES:
+            self.windows = get_windows()
+            self.frames_since_window_update = 0
+
         self.apply_ragdoll(stickman)
         self.apply_gravity(stickman)
         self.resolve_ground_collision(stickman)
         self.resolve_edge_collision(stickman)
         self.apply_walk_movement(stickman)
+        self.check_ground_lost(stickman)
 
     def apply_gravity(self, stickman):
         if stickman.holding or stickman.flying:
@@ -31,7 +39,7 @@ class StickmanPhysics:
         feet_y = stickman.y + stickman.height
 
         max_y = max(point.y for point in stickman.ragpoints.values())
-        ground_y = self.compute_ground_y(stickman, max_y)
+        ground_y, _ = self.compute_ground_y_and_limit(stickman, max_y)
 
         if feet_y >= ground_y:
             stickman.velocity_y = 0
@@ -74,28 +82,38 @@ class StickmanPhysics:
 
     # TODO: Fazer uma classe StickmanRagdoll
 
-    def compute_ground_y(self, stickman, max_y):
-        candidates = [self.screen_y + self.screen_height]
+    def compute_ground_y_and_limit(self, stickman, max_y):
+        candidates = [(self.screen_y + self.screen_height, (0, self.screen_width))]
 
-        for window in get_windows():
+        for window in self.windows:
+            
             if window.top >= max_y:
-                candidates.append(window.top)
+                stickman_left = stickman.x
+                stickman_right = stickman.x + stickman.width
+                window_left = window.left
+                window_right = window.left + window.width
 
-        return min(candidates)
+                overlaps_horizontally = stickman_left < window_right and stickman_right > window_left
 
-        def resolve_flying_landing(self, stickman):
-            if not stickman.flying:
-                return
+                if overlaps_horizontally:
+                    candidates.append((window.top, (window.left, window.width)))
 
-            max_y = max(
-                point.y + (stickman.head_radius if name == 'head' else RAGPOINT_RADIUS)
-                for name, point in stickman.ragpoints.items()
-            )
+        best = min(candidates, key=lambda t: t[0])
+        return best[0], best[1]
+    
+    def resolve_flying_landing(self, stickman):
+        if not stickman.flying:
+            return
 
-            stickman.ground_y = self.compute_ground_y(stickman, max_y)
+        max_y = max(
+            point.y + (stickman.head_radius if name == 'head' else RAGPOINT_RADIUS)
+            for name, point in stickman.ragpoints.items()
+        )
 
-            if max_y >= stickman.ground_y:
-                stickman.flying = False
+        stickman.ground_y, stickman.ground_limit = self.compute_ground_y_and_limit(stickman, max_y)
+
+        if max_y >= stickman.ground_y:
+            stickman.flying = False
     
     def resolve_flying_ground_contact(self, stickman):
         if not stickman.flying:
@@ -107,6 +125,20 @@ class StickmanPhysics:
 
         if max_y >= ground_y:
             stickman.flying = False
+
+    def check_ground_lost(self, stickman):
+
+        if stickman.flying or stickman.holding:
+            return
+
+        if (
+            stickman.x > stickman.ground_limit[0] + stickman.ground_limit[1]
+            or stickman.x + stickman.width < stickman.ground_limit[0]
+        ):
+            stickman.joints = calculate_joints(stickman.current_frame, stickman, stickman.head_radius)
+            stickman.ragpoints = create_ragpoints(stickman.joints, stickman.x, stickman.y)
+
+            stickman.flying = True
 
     def resolve_flying_edge_collision(self, stickman):
 
@@ -167,7 +199,7 @@ class StickmanPhysics:
 
         ragpoints = stickman.ragpoints
 
-        for window in get_windows():
+        for window in self.windows:
 
             window_right = window.left + window.width
             window_bottom = window.top + window.height
@@ -272,6 +304,7 @@ class StickmanPhysics:
 
         self.resolve_flying_edge_collision(stickman)
         self.resolve_flying_window_collision(stickman)
+        self.resolve_flying_landing(stickman)
 
         if stickman.flying:
 

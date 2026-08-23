@@ -61,7 +61,6 @@ class StickmanOverlay(QWidget):
 
         self.stickman.holding = bool(self.stickman.grab_part)
         
-
     def mouseMoveEvent(self, event):
         if not self.stickman.holding:
             return
