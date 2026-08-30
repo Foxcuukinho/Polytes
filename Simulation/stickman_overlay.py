@@ -43,24 +43,39 @@ class StickmanOverlay(QWidget):
         draw_stickman(painter, self.stickman)
 
     def mousePressEvent(self, event):
-        # Essa função apenas acontece quando o mouse clica no >Widget<
         mouse_x = event.globalPos().x()
         mouse_y = event.globalPos().y()
 
-        self.stickman.joints = calculate_joints(self.stickman.current_frame, self.stickman, self.stickman.head_radius)
-        self.stickman.ragpoints = create_ragpoints(self.stickman.joints, self.stickman.x, self.stickman.y)
+        self.stickman.grab_part = get_drag_part(
+            self.stickman,
+            mouse_x,
+            mouse_y
+        )
 
-        self.stickman.grab_part = get_drag_part(self.stickman, mouse_x, mouse_y)
+        if not self.stickman.grab_part:
+            return
 
-        if bool(self.stickman.grab_part):
-            # O offset permite que o stickman não se teleporte para a ponta do mouse ao ser clicado
-            self.drag_offset_x = mouse_x - self.stickman.joints[self.stickman.grab_part]['position'][0]
-            self.drag_offset_y = mouse_y - self.stickman.joints[self.stickman.grab_part]['position'][1]
-            self.stickman.flying = False
-            
+        self.stickman.overlap_windows.clear()
 
-        self.stickman.holding = bool(self.stickman.grab_part)
-        
+        self.drag_offset_x = (
+            mouse_x
+            - self.stickman.joints[self.stickman.grab_part]['position'][0]
+        )
+
+        self.drag_offset_y = (
+            mouse_y
+            - self.stickman.joints[self.stickman.grab_part]['position'][1]
+        )
+
+        self.stickman.ragpoints = create_ragpoints(
+            self.stickman.joints,
+            self.stickman.x,
+            self.stickman.y
+        )
+
+        self.stickman.flying = False
+        self.stickman.holding = True    
+
     def mouseMoveEvent(self, event):
         if not self.stickman.holding:
             return
@@ -82,19 +97,27 @@ class StickmanOverlay(QWidget):
         # Não é precicfsso mover a janela imediatamente aqui, pois update_position() já cuida disso
     
     def mouseReleaseEvent(self, event):
+        if not self.stickman.holding:
+            return
+
         self.stickman.holding = False
         self.stickman.flying = True
 
-        if bool(self.stickman.grab_part):
-            self.stickman.ragpoints[self.stickman.grab_part].old_x = self.stickman.ragpoints[self.stickman.grab_part].x - self.drag_velocity_x 
+        if self.stickman.grab_part:
+            self.stickman.ragpoints[self.stickman.grab_part].old_x = (
+                self.stickman.ragpoints[self.stickman.grab_part].x
+                - self.drag_velocity_x
+            )
 
-            self.stickman.ragpoints[self.stickman.grab_part].old_y = self.stickman.ragpoints[self.stickman.grab_part].y - self.drag_velocity_y
+            self.stickman.ragpoints[self.stickman.grab_part].old_y = (
+                self.stickman.ragpoints[self.stickman.grab_part].y
+                - self.drag_velocity_y
+            )
 
         self.stickman.grab_part = None
 
         self.stickman.velocity_y = 0
         self.stickman.velocity_x = 0
-
 
     def center_on_screen(self):
         screen_x, screen_y, screen_width, screen_height = get_screen_geometry()
@@ -103,12 +126,6 @@ class StickmanOverlay(QWidget):
         self.stickman.y = screen_y + screen_height / 2 - (self.stickman.height / 2)
 
     def update_position(self):
-
-        flags = self.windowFlags()
-
-        self.setWindowFlags(flags | Qt.WindowStaysOnTopHint)
-
-        self.show()
         self.update()
         self.update_mask()
 

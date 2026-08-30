@@ -21,7 +21,7 @@ class StickmanAnimator:
             stickman.base_frame = current_frames[stickman.animation_frame_index]
 
     def calculate_cycle_duration(self, stickman, current_animation):
-        if stickman.state == 'WALK' and not (stickman.holding or stickman.flying):
+        if stickman.state == 'WALK' and not (stickman.holding or stickman.flying) and stickman.velocity_x != 0:
             stickman.animation_cycle_duration =  DISTANCE_PER_WALK_CYCLE / stickman.velocity_x
         else:
             stickman.animation_cycle_duration = current_animation["default_seconds_per_cycle"]

@@ -22,6 +22,7 @@ class Stickman:
         # Configurações de janela
         self.width = STICKMAN_WIDTH
         self.height = STICKMAN_HEIGHT
+        self.ghost_process = None
 
         # Física
         self.x = 0
@@ -31,6 +32,7 @@ class Stickman:
         self.ground_y = None
         screen_x, _, screen_width, _ = get_screen_geometry()
         self.ground_limit = (screen_x, screen_width)
+        self.overlap_windows = []
 
         # Misc
         self.head_radius = HOLLOW_HEAD_DIAMETER //2 if self.hollow_head else FILLED_HEAD_DIAMETER // 2
