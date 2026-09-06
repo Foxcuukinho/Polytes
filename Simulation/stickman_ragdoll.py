@@ -4,7 +4,7 @@ from Utils.constants import (
     RAGDOLL_BOUNCE_FACTOR,
     STICKMAN_WIDTH,
     STICKMAN_HEIGHT,
-    STROKE
+    STROKE, GROUND_SNAP_TOLERANCE   
 )
 from Utils.helpers import get_windows, detect_collision_with_ragpoint_and_window, get_screen_geometry, compute_ground_y_and_limit, rectangle_overlap
 from Body.body_physics import calculate_joints, create_ragpoints, solve_body
@@ -14,20 +14,13 @@ class StickmanRagdoll:
     def __init__(self):
         self.screen_x, self.screen_y, self.screen_width, self.screen_height = get_screen_geometry()
 
-        self.windows = []
-        self.frames_since_window_update = 0
+    def update(self, stickman, windows):
+        if (stickman.flying or stickman.holding):
+            self.windows = windows
 
-    def update(self, stickman):
-        if not (stickman.flying or stickman.holding):
-            return
+            self.apply_ragdoll(stickman)
 
-        self.frames_since_window_update += 1
-
-        if self.frames_since_window_update >= WINDOW_UPDATE_INTERVAL_FRAMES:
-            self.windows = get_windows()
-            self.frames_since_window_update = 0
-
-        self.apply_ragdoll(stickman)
+        self.check_ground_lost(stickman)
 
     def get_point_radius(self, name, stickman):
         return (
@@ -122,7 +115,17 @@ class StickmanRagdoll:
         if not stickman.flying:
             return
 
+        stickman.ground_window_handle = None
+
         _, _, _, max_y = self.compute_ragdoll_bounds(stickman)
+
+        for window in self.windows:
+            stickman_left = stickman.x
+            stickman_right = stickman.x + stickman.width
+            window_left = window.left
+            window_right = window.left + window.width
+            overlaps = stickman_left < window_right and stickman_right > window_left
+    
 
         stickman.ground_y, stickman.ground_limit = (
             compute_ground_y_and_limit(
@@ -136,10 +139,25 @@ class StickmanRagdoll:
             )
         )
 
+        stickman.ground_y, stickman.ground_limit = (
+    compute_ground_y_and_limit(
+        stickman,
+        max_y,
+        self.windows,
+        self.screen_x,
+        self.screen_y,
+        self.screen_width,
+        self.screen_height
+    )
+)
+
+
         if max_y >= stickman.ground_y:
             stickman.flying = False
-
     def check_ground_lost(self, stickman):
+        if stickman.flying or stickman.holding:
+            return
+
         ground_left, ground_width = stickman.ground_limit
 
         if (
@@ -199,10 +217,21 @@ class StickmanRagdoll:
 
         ragpoints = stickman.ragpoints
 
+        ragdoll_min_x, ragdoll_min_y, ragdoll_max_x, ragdoll_max_y = (
+            self.compute_ragdoll_bounds(stickman)
+        )
+        ragdoll_width = ragdoll_max_x - ragdoll_min_x
+        ragdoll_height = ragdoll_max_y - ragdoll_min_y
+
         for window in self.windows:
-            
 
             if window.getHandle() in stickman.overlap_windows:
+                continue
+
+            if not rectangle_overlap(
+                window.left, window.top, window.width, window.height,
+                ragdoll_min_x, ragdoll_min_y, ragdoll_width, ragdoll_height
+            ):
                 continue
 
             window_right = window.left + window.width
@@ -261,7 +290,7 @@ class StickmanRagdoll:
                         offset_y=window_bottom - min_y
                     )
                     self.bounce_y(points)
-                    
+
     def apply_ragdoll(self, stickman):
         if not (stickman.holding or stickman.flying):
             return
@@ -279,26 +308,23 @@ class StickmanRagdoll:
                 stickman.grab_part
             )
 
-
         self.update_overlapped_windows_in_holding(stickman)
         self.update_overlapped_windows_in_flying(stickman)
         self.resolve_flying_edge_collision(stickman)
         self.resolve_flying_window_collision(stickman)
-        self.resolve_flying_landing(stickman)
 
         if stickman.flying:
-            self.check_ground_lost(stickman)
-
             min_x, min_y, max_x, max_y = (
                 self.compute_ragdoll_bounds(stickman)
             )
-
             stickman.x = int(min_x)
             stickman.y = int(min_y)
             stickman.width = int(max_x - min_x)
             stickman.height = int(max_y - min_y)
 
-        elif not stickman.holding:
+        self.resolve_flying_landing(stickman)
+
+        if not stickman.flying and not stickman.holding:
             stickman.width = STICKMAN_WIDTH
             stickman.height = STICKMAN_HEIGHT
 

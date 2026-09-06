@@ -56,9 +56,15 @@ class StickmanPhysics:
         if stickman.holding or stickman.flying:
             return
 
+
         feet_y = stickman.y + stickman.height
 
-        ground_y, _ = compute_ground_y_and_limit(
+        max_y = max(
+            point.y
+            for point in stickman.ragpoints.values()
+        )
+
+        ground_y, ground_limit = compute_ground_y_and_limit(
             stickman,
             feet_y,
             self.windows,
@@ -67,6 +73,8 @@ class StickmanPhysics:
             self.screen_width,
             self.screen_height
         )
+
+        stickman.ground_limit = ground_limit
 
         if feet_y >= ground_y:
             stickman.velocity_y = 0
@@ -106,3 +114,4 @@ class StickmanPhysics:
             * stickman.direction
             * DELTA_TIME
         )
+

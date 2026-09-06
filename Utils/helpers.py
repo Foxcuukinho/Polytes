@@ -1,7 +1,7 @@
 from PyQt5.QtWidgets import QApplication
 import pywinctl as pwc
-import hashlib
-import math
+import hashlib, math, os, sys
+from Utils.constants import GROUND_SNAP_TOLERANCE
 
 
 def clamp(value, min_value, max_value):
@@ -105,7 +105,6 @@ def detect_collision_with_ragpoint_and_window(
         bottom_collision
     )
 
-
 def compute_ground_y_and_limit(
     stickman,
     max_y,
@@ -118,35 +117,45 @@ def compute_ground_y_and_limit(
     candidates = [
         (
             screen_y + screen_height,
-            (screen_x, screen_width)
+            (screen_x, screen_width),
+            None
         )
     ]
 
-    for window in windows:
-        if window.top < max_y:
-            continue
+    hip_x = stickman.ragpoints["hip"].x
 
-        stickman_left = stickman.x
-        stickman_right = stickman.x + stickman.width
+    for window in windows:
+        if window.top < max_y - GROUND_SNAP_TOLERANCE:
+            continue
 
         window_left = window.left
         window_right = window.left + window.width
 
         overlaps_horizontally = (
-            stickman_left < window_right
-            and stickman_right > window_left
+            hip_x > window_left
+            and hip_x < window_right
         )
 
         if overlaps_horizontally:
             candidates.append(
                 (
                     window.top,
-                    (window.left, window.width)
+                    (window.left, window.width),
+                    window.getHandle()
                 )
             )
 
-    return min(candidates, key=lambda candidate: candidate[0])
+    current_handle = getattr(stickman, "ground_window_handle", None)
 
+    if current_handle is not None:
+        for candidate in candidates:
+            if candidate[2] == current_handle:
+                stickman.ground_window_handle = candidate[2]
+                return candidate[0], candidate[1]
+
+    chosen = min(candidates, key=lambda candidate: candidate[0])
+    stickman.ground_window_handle = chosen[2]
+    return chosen[0], chosen[1]
 
 def seed_from_name(name):
     hash_value = hashlib.sha256(name.encode())
@@ -201,3 +210,13 @@ def get_windows():
         valid_windows.append(window)
 
     return valid_windows
+
+def get_ghost_process_command(name):
+    if getattr(sys, 'frozen', False):
+        base_path = os.path.dirname(sys.executable)
+        ghost_path = os.path.join(base_path, 'stickman_ghost_process')
+        return [ghost_path, name]
+    else:
+        base_path = os.path.dirname(os.path.abspath(__file__))
+        ghost_path = os.path.join(os.path.dirname(base_path), 'Simulation', 'stickman_ghost_process.py')
+        return ['python3', ghost_path, name]

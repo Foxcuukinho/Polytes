@@ -11,3 +11,13 @@ venv/
 *.log
 
 assets/
+
+# Build artifacts
+build/
+dist/
+deb_build/
+Polytes.AppDir/
+
+# Generated packages
+*.deb
+*.AppImage
