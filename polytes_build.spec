@@ -34,25 +34,14 @@ a_ghost = Analysis(
     noarchive=False,
 )
 
-pyz_main = PYZ(a_main.pure, a_main.zipped_data, cipher=block_cipher)
-pyz_ghost = PYZ(a_ghost.pure, a_ghost.zipped_data, cipher=block_cipher)
-
-exe_main = EXE(
-    pyz_main,
-    a_main.scripts,
-    [],
-    exclude_binaries=True,
-    name='Polytes',
-    debug=False,
-    bootloader_ignore_signals=False,
-    strip=False,
-    upx=True,
-    console=False,
-    icon=None,  # icone customizado entra aqui depois
+pyz = PYZ(
+    a_main.pure + a_ghost.pure,
+    a_main.zipped_data + a_ghost.zipped_data,
+    cipher=block_cipher,
 )
 
 exe_ghost = EXE(
-    pyz_ghost,
+    pyz,
     a_ghost.scripts,
     [],
     exclude_binaries=True,
@@ -62,11 +51,24 @@ exe_ghost = EXE(
     strip=False,
     upx=True,
     console=False,
-    icon=None,  # icone customizado entra aqui depois
+)
+
+exe = EXE(
+    pyz,
+    a_main.scripts,
+    [],
+    exclude_binaries=True,
+    name='Polytes',
+    debug=False,
+    bootloader_ignore_signals=False,
+    strip=False,
+    upx=True,
+    console=False,
+    icon=None,
 )
 
 coll = COLLECT(
-    exe_main,
+    exe,
     a_main.binaries,
     a_main.zipfiles,
     a_main.datas,
@@ -76,6 +78,5 @@ coll = COLLECT(
     a_ghost.datas,
     strip=False,
     upx=True,
-    upx_exclude=[],
     name='Polytes',
 )

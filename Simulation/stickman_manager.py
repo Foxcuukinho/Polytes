@@ -33,7 +33,10 @@ class StickmanManager:
         overlay = StickmanOverlay(stickman)
 
         self.stickmans_overlays.append(overlay)
+        overlay.apply_x11_hints()
         overlay.show()
+        
+        overlay = StickmanOverlay(stickman)
 
         print(f"create_stickman: {time.perf_counter() - t0:.3f}s")
 

@@ -5,6 +5,7 @@ from Animation.draw_stickman import draw_stickman
 from Utils.helpers import get_screen_geometry
 from Utils.constants import STICKMAN_WIDTH, STICKMAN_HEIGHT
 from Body.body_physics import calculate_joints, create_ragpoints, get_drag_part, move_grab_part
+from Utils.x11_hints import set_always_on_top_x11
 
 class StickmanOverlay(QWidget):
 
@@ -191,3 +192,8 @@ class StickmanOverlay(QWidget):
         mask_region = mask_region + head_circle
 
         self.setMask(mask_region)
+
+    def apply_x11_hints(self):
+        from Utils.x11_hints import set_window_type_dock, set_always_on_top_x11
+        set_window_type_dock(int(self.winId()))
+        set_always_on_top_x11(int(self.winId()))

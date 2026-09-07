@@ -213,10 +213,14 @@ def get_windows():
 
 def get_ghost_process_command(name):
     if getattr(sys, 'frozen', False):
-        base_path = os.path.dirname(sys.executable)
-        ghost_path = os.path.join(base_path, 'stickman_ghost_process')
+        base_path = sys._MEIPASS
+        ghost_path = os.path.join(base_path, 'stickman_ghost_process.exe')
         return [ghost_path, name]
     else:
         base_path = os.path.dirname(os.path.abspath(__file__))
-        ghost_path = os.path.join(os.path.dirname(base_path), 'Simulation', 'stickman_ghost_process.py')
+        ghost_path = os.path.join(
+            os.path.dirname(base_path),
+            'Simulation',
+            'stickman_ghost_process.py'
+        )
         return ['python3', ghost_path, name]
