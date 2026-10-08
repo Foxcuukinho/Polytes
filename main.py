@@ -1,16 +1,15 @@
 import sys
-from PyQt5.QtWidgets import QApplication
-from Simulation.simulation import Simulation
-from CreatorWindow.creator_window import CreatorWindow
 from Simulation.stickman_manager import StickmanManager
+from Simulation.simulation import Simulation
+from Simulation.world import World
+from PyQt6.QtWidgets import QApplication
+from PyQt6.QtGui import QColor
 
 
-if __name__ == "__main__":
-    app = QApplication(sys.argv)
-    manager = StickmanManager()
-    simulation = Simulation(manager)
-    simulation.start()
-    creator_window = CreatorWindow(manager)
-
-    creator_window.show()
-    sys.exit(app.exec_())
+app = QApplication([])
+world = World()
+manager = StickmanManager(world)
+simulation = Simulation(manager)
+simulation.start()
+manager.create_stickman(QColor('#8ABBD8'))
+sys.exit(app.exec())
