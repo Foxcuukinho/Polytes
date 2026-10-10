@@ -65,8 +65,6 @@ class Stickman:
         self.base_frame = ANIMATIONS['IDLE']['frames'][0]
         self.animation_cycle_duration = DEFAULT_ANIMATION_CYCLE_DURATION
 
-        print(f'Energy: {self.energy}')
-        print(f'Curiosity: {self.curiosity}')
 
         self.joints = calculate_joints(self.current_frame, self, self.head_radius)
         self.ragpoints = create_ragpoints(self.joints, self.x, self.y)

@@ -10,7 +10,7 @@ class StickmanAnimator:
         self.calculate_cycle_duration(stickman, current_animation)
 
         seconds_per_frame = stickman.animation_cycle_duration / len(current_frames)
-        
+
         stickman.current_frame = self.interpolate_frame(stickman, current_frames, seconds_per_frame)
 
         stickman.animation_timer += DELTA_TIME
@@ -22,13 +22,13 @@ class StickmanAnimator:
 
     def calculate_cycle_duration(self, stickman, current_animation):
         if stickman.state == 'WALK' and not (stickman.holding or stickman.flying) and stickman.velocity_x != 0:
-            stickman.animation_cycle_duration =  DISTANCE_PER_WALK_CYCLE / stickman.velocity_x
+            stickman.animation_cycle_duration = DISTANCE_PER_WALK_CYCLE / stickman.velocity_x
         else:
             stickman.animation_cycle_duration = current_animation["default_seconds_per_cycle"]
 
     def interpolate_frame(self, stickman, current_frames, seconds_per_frame):
 
-        progress = stickman.animation_timer / seconds_per_frame
+        progress = min(stickman.animation_timer / seconds_per_frame, 1)
 
         next_frame = current_frames[(stickman.animation_frame_index + 1) % len(current_frames)]
 

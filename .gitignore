@@ -1,16 +1,22 @@
+# Python
 __pycache__/
 *.pyc
 *.pyo
 *.pyd
 
+# Ambientes e segredos
 .env
 venv/
 .venv/
-.txt
 
+# Editor
+.vscode/
+
+# Logs
 *.log
 
-assets/
+# Assets
+/Assets/
 
 # Build artifacts
 build/
@@ -18,6 +24,6 @@ dist/
 deb_build/
 Polytes.AppDir/
 
-# Generated packages
+# Pacotes gerados
 *.deb
 *.AppImage

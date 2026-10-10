@@ -1,5 +1,5 @@
-from PyQt5.QtWidgets import QApplication, QWidget
-from PyQt5.QtGui import QPainter, QColor, QPen, QRegion
+from PyQt5.QtWidgets import QWidget
+from PyQt5.QtGui import QPainter, QRegion
 from PyQt5.QtCore import Qt, QRect
 from Animation.draw_stickman import draw_stickman
 from Utils.helpers import get_screen_geometry, is_mirrored
@@ -11,6 +11,7 @@ from Body.body_physics import (
     move_grab_part,
     apply_spin
 )
+
 
 class StickmanOverlay(QWidget):
 
@@ -27,7 +28,7 @@ class StickmanOverlay(QWidget):
 
         self.drag_velocity_x = 0
         self.mouse_old_x = 0
-        
+
         self.drag_velocity_y = 0
         self.mouse_old_y = 0
 
@@ -80,7 +81,7 @@ class StickmanOverlay(QWidget):
         )
 
         self.stickman.flying = False
-        self.stickman.holding = True    
+        self.stickman.holding = True
 
     def mouseMoveEvent(self, event):
         if not self.stickman.holding:
@@ -94,14 +95,9 @@ class StickmanOverlay(QWidget):
 
         self.drag_velocity_y = mouse_y - self.mouse_old_y
         self.mouse_old_y = mouse_y
-    
-        #self.stickman.x = mouse_x - self.drag_offset_x
-        #self.stickman.y = mouse_y - self.drag_offset_y
-        
+
         move_grab_part(self.stickman, mouse_x, mouse_y, self.drag_offset_x, self.drag_offset_y)
 
-        # Não é precicfsso mover a janela imediatamente aqui, pois update_position() já cuida disso
-    
     def mouseReleaseEvent(self, event):
         if not self.stickman.holding:
             return
@@ -129,7 +125,7 @@ class StickmanOverlay(QWidget):
 
         self.stickman.velocity_y = 0
         self.stickman.velocity_x = 0
-        
+
     def center_on_screen(self):
         screen_x, screen_y, screen_width, screen_height = get_screen_geometry()
 
@@ -166,7 +162,7 @@ class StickmanOverlay(QWidget):
         height = int(max(ys) - min(ys) + margin * 2)
 
         self.setMask(QRegion(QRect(left, top, width, height)))
-    
+
     def apply_x11_hints(self):
         from Utils.x11_hints import set_window_type_dock, set_always_on_top_x11
         set_window_type_dock(int(self.winId()))

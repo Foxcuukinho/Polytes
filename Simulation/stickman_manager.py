@@ -25,7 +25,6 @@ class StickmanManager:
     
 
     def create_stickman(self, name, color, hollow_head):
-        t0 = time.perf_counter()
 
         stickman = Stickman(name, color, hollow_head)
         stickman.ghost_process = subprocess.Popen(get_ghost_process_command(name))
@@ -38,17 +37,15 @@ class StickmanManager:
         
         overlay = StickmanOverlay(stickman)
 
-        print(f"create_stickman: {time.perf_counter() - t0:.3f}s")
 
     def delete_stickman(self, stickman):
-        t0 = time.perf_counter()
-
+  
         for overlay in self.stickmans_overlays.copy():
             if overlay.stickman == stickman:
                 overlay.close()
                 self.stickmans_overlays.remove(overlay)
 
-        print(f"delete_stickman: {time.perf_counter() - t0:.3f}s")
+   
 
     def update_stickman(self):
 

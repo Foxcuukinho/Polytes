@@ -20,7 +20,7 @@ class StickmanBrain:
         score_idle = self.score_idle(stickman)
         score_walk = self.score_walk(stickman)
 
-        if score_walk > score_idle + SCORE_MARGIN and not stickman.holding:
+        if score_walk > score_idle + SCORE_MARGIN and not (stickman.holding or stickman.flying):
             stickman.state = 'WALK'
             stickman.target_x = self.choose_target_x(stickman)
 
@@ -29,7 +29,9 @@ class StickmanBrain:
             stickman.target_x = None
 
         if stickman.state != previous_state:
-            stickman.animation_frame_index = 0
+            stickman.animation_frame_index = -1
+            stickman.animation_timer = 0
+            stickman.base_frame = stickman.current_frame
 
     def score_idle(self, stickman): 
         return self._calculate_score(stickman, invert=True)
