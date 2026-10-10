@@ -23,6 +23,7 @@
 - [Support the project](#support-the-project)
 - [How it works](#how-it-works)
 - [Main systems](#main-systems)
+- [Technical deep dive](#technical-deep-dive)
 - [Technologies](#technologies)
 - [Project structure](#project-structure)
 - [V1 scope](#v1-scope)
@@ -32,13 +33,19 @@
 
 ## What it is
 
-**Polytes** is a desktop pet: stickmen that live freely on your screen, with real physics, procedurally generated personality, and emergent, non-scripted behavior. Each stickman decides on its own whether to stand still or walk, based on personality traits and internal needs that change over time.
+**Polytes** is a program that puts stickmen to life on your computer. They aren't images or GIFs: each one is drawn and animated procedurally, and runs on real ragdoll physics. Grab any part of its body, let go, and watch it fall and react with real inertia, bouncing off the screen edges and colliding with the windows you have open.
 
-The goal of V1 is not just to "prove the concept". It is to already deliver the feeling of a **real physical being**, not a shimeji standing still on your screen.
+Each stickman also has its own **personality**, generated from the name you give it (plus its color and head type). Personality changes how it behaves: some walk around more, others rest more. Nothing is scripted. Every stickman decides on its own what to do, based on internal needs (like stamina and boredom) that change over time.
 
-You can drag the stickman by its body, let go while it's moving, and it reacts like a rag doll (ragdoll), bouncing off the screen edges.
+**In short, you can:**
+- Create a stickman by choosing a name, a color, and a hollow or filled head
+- Watch it walk and stand still on its own, on your real desktop
+- Grab it, throw it, and see it land on top of your windows
+- Delete it by ending its process in your system's task manager
 
-The project is inspired by the series **Animator vs. Animation**, and built from scratch in Python.
+The goal of V1 is not just to "prove the concept". It is to already deliver the feeling of a **real physical being**, not a shimeji standing still on your screen. The project is inspired by the series **Animator vs. Animation**, and built from scratch in Python.
+
+> **Heads up:** Polytes is still very simple. Right now the stickmen can only walk, stand still, and react to physics when you grab them. More behaviors are coming in future updates.
 
 ---
 
@@ -92,6 +99,17 @@ Want to support Polytes or share your ideas? Check out the project's Patreon: **
 
 ## How it works
 
+In simple terms, each stickman goes through these steps:
+
+1. **Personality:** the name you type is turned into a number (a "seed"), which generates two traits: `energy` and `curiosity`. The same name always gives the same personality. Color and head type add small bonuses.
+2. **Needs:** while it lives, its `stamina` and `boredom` change over time. Walking tires it out and relieves boredom, standing still rests it and makes it bored.
+3. **Decision:** every few seconds, its brain compares its traits and needs and decides: walk somewhere, or stand still.
+4. **Body and animation:** the body is a set of joints with angles. Animations are a list of poses, and the movement between poses is smoothed out frame by frame.
+5. **Physics:** gravity pulls it down, the ground and your open windows hold it up, and when you grab it, its body turns into a ragdoll.
+6. **Drawing:** everything is drawn in a transparent window over your screen, so the stickman looks like it lives right on your desktop.
+
+Here is the same flow in more technical detail:
+
 ```
 Stickman creator (name, color, hollow/filled head)
               ↓
@@ -129,6 +147,108 @@ On Linux, the window also receives EWMH hints via X11 (`_NET_WM_STATE_ABOVE`, `S
 | **Fullscreen overlay + mask** | The window covers the whole screen from the start (never resized), only the mask (`setMask`) changes per frame, avoiding Qt compositing artifacts |
 | **Always-on-top via X11** | EWMH hints (`ABOVE`, `SKIP_TASKBAR`, `SKIP_PAGER`, window type `DOCK`) keep the stickman always visible, hidden from Alt-Tab, and surviving "show desktop" |
 | **Ghost process** | Each stickman has its own operating system process (named, visible in the task manager); killing that process actually deletes the stickman |
+
+---
+
+## Technical deep dive
+
+For those who want to know exactly how it works. Values come from `Utils/constants.py` and may change as the project is tuned.
+
+### Main loop
+
+A single `QTimer` (`Simulation`) ticks every `FRAME_DURATION_MS = 32` ms (about 31 updates per second), with `DELTA_TIME = 0.032` s. On every tick, for each stickman, `StickmanManager` runs in this order: **brain, physics, animation, overlay**. The order matters: the brain must run before physics, otherwise on the frame where a stickman switches from `IDLE` to `WALK`, physics still sees the old state and `velocity_x` is `0`, which would cause a division by zero in the animator.
+
+### Personality
+
+```
+seed      = int(sha256(name), 16)
+rng       = random.Random(seed)            # isolated RNG, never the global one
+energy    = rng.randint(0, 100)
+curiosity = rng.randint(0, 100)
+
+hollow head          → energy    *= 1.2
+hue in [120, 240]    → curiosity *= 1.2    (cool colors)
+any other hue        → energy    *= 1.2    (warm colors)
+
+both traits are clamped to [1, 100] and rounded
+```
+
+The same name, color and head type always produce the same stickman.
+
+### Needs
+
+Updated every frame (`dt = DELTA_TIME`):
+
+```
+stamina_drain  = (65 / energy)    * dt
+stamina_gain   = (energy / 50)    * dt
+boredom_drain  = (curiosity / 50) * dt
+boredom_gain   = (curiosity / 30) * dt
+
+IDLE      → stamina += stamina_gain,  boredom += boredom_gain
+otherwise → stamina -= stamina_drain, boredom -= boredom_drain
+```
+
+Both values are clamped to `[0, 100]`. This means a low-`energy` stickman gets tired much faster, and a high-`curiosity` one gets bored and recovers from boredom faster.
+
+### Decision (Utility AI)
+
+The brain only decides every `STICKMAN_DEFAULT_DECIDE_COOLDOWN = 3` seconds (a temporal hysteresis, so it doesn't flip state every frame). Each option's score is the sum of four factors scaled to `0..1`:
+
+```
+score_walk = Σ (factor / 100)         for factor in [energy, curiosity, stamina, boredom]
+score_idle = Σ (1 - factor / 100)     for the same factors
+
+WALK  if score_walk > score_idle + SCORE_MARGIN (0.3)   and the stickman is not being dragged
+IDLE  if score_idle > score_walk
+```
+
+When it switches to `WALK`, it picks a random `target_x` at least 200 px away from its current position, and picks a new one when it gets within 10 px of it.
+
+### Movement and ground
+
+Walking moves `x` at `DEFAULT_WALK_SPEED = 170` px/s toward `target_x`. Gravity is a simple integration (`GRAVITY_ACCELERATION = 1098` px/s²): `velocity_y += g * dt`, then `y += velocity_y * dt`. The ground is the **lowest candidate** among the real screen bottom and the visible top edges of system windows that overlap the stickman horizontally and sit below its feet (with `GROUND_SNAP_TOLERANCE` to avoid losing a window by a few pixels). When the body leaves the ground area completely, the stickman switches to the physical ragdoll state (`flying`).
+
+### Skeleton and animation
+
+The body is a list of joints (`RIG`), each with a `parent`, a `length`, an `angle` key and a `relative` flag (relative angles add to the parent's angle). Joint positions come from **forward kinematics**:
+
+```
+position = parent_position + length * (cos(angle), sin(angle))
+```
+
+After computing all joints, the whole body is shifted vertically so the lowest foot touches the ground, whatever the pose. Limbs are drawn as quadratic curves (`QPainterPath.quadTo`) with a control point derived from the middle joint.
+
+Animations are lists of poses (dictionaries of angles). Between two poses, each angle is **linearly interpolated**: `angle = a + (b - a) * progress`, where `progress = timer / seconds_per_frame`. For `WALK`, the cycle duration is tied to the real speed to avoid foot sliding:
+
+```
+cycle_duration = DISTANCE_PER_WALK_CYCLE (67) / velocity_x
+```
+
+### Ragdoll (Verlet / Jakobsen)
+
+When you grab the stickman, each joint becomes a `RagPoint` that stores its **current and previous position** (velocity is implicit). Each frame:
+
+```
+x_new = x + (x - old_x) * RAGDOLL_DAMPING (0.85)
+y_new = y + (y - old_y) * RAGDOLL_DAMPING + g * dt
+```
+
+Then the skeleton is held together by **distance constraints**: for every bone in the `RIG`, `solve_bone` moves the two points along their line until their distance equals the bone length. This is repeated **20 times per frame** (fewer iterations make the body stretch). While held, the grabbed point is pinned to the mouse; on release, the mouse movement is injected as velocity by setting `old = position - mouse_delta`, which is what makes throwing work.
+
+Collisions use the ragdoll's bounding box. Screen edges and window sides push the whole body back and reflect its implicit velocity (`RAGDOLL_BOUNCE_FACTOR = 0.7`). Landing happens when the lowest point reaches a valid ground, which switches the stickman back to normal (FK) mode. Windows that already overlap the body when you release it are ignored until they stop overlapping, so you can drop a stickman inside a window without it being teleported.
+
+### System windows
+
+Window geometry comes from `pywinctl`. Reading properties from live window objects is slow (each read queries the system), so windows are copied into lightweight snapshots and **refreshed only every `WINDOW_UPDATE_INTERVAL_FRAMES = 60` frames**. On Linux/X11, the stacking order (`_NET_CLIENT_LIST_STACKING`) is used to compute which parts of a window's top edge are actually visible, so a stickman only stands on the exposed part of a partly covered window.
+
+### Overlay and mouse hit-testing
+
+Each stickman lives in a borderless, transparent, always-on-top window covering the whole screen, created once and never resized (resizing every frame caused a flicker in Qt). Only `setMask` changes per frame: the mask is built from small `QRegion` squares placed along every bone (5 per bone, radius 15 px) plus a larger one around the head, so the rest of the screen stays click-through. When the stickman faces right, the drawing is mirrored horizontally around its own position, and the mask uses the same mirroring.
+
+### Ghost process
+
+Each stickman has a tiny separate OS process whose only job is to rename itself (`setproctitle`) to the stickman's name and sleep. The manager polls it every frame, and when it is no longer running, the stickman is deleted. This is what makes "End task" in the task manager delete a stickman for real.
 
 ---
 
