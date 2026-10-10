@@ -2,202 +2,225 @@
 
 <div align="center">
 
-**Um "pet" de desktop vivo, não scriptado**
+**A living, non-scripted desktop "pet"**
 
 ![Python](https://img.shields.io/badge/Python-3-3776AB?style=flat&logo=python&logoColor=white)
 ![PyQt5](https://img.shields.io/badge/PyQt5-Desktop-41CD52?style=flat&logo=qt&logoColor=white)
-![Status](https://img.shields.io/badge/status-em%20desenvolvimento-yellow?style=flat)
+![Status](https://img.shields.io/badge/status-in%20development-yellow?style=flat)
 ![License](https://img.shields.io/badge/license-GPLv3-blue?style=flat)
 
-[**Página no itch.io**](https://foxcuukinho.itch.io/polytes)
+[**itch.io page**](https://foxcuukinho.itch.io/polytes) · [**Support on Patreon**](https://www.patreon.com/c/Polytes)
 
 </div>
 
 ---
 
-> 🚧 **Projeto em desenvolvimento ativo.** O código aqui muda com frequência e ainda não há um lançamento oficial. Em breve o Polytes será lançado no [itch.io](https://foxcuukinho.itch.io/polytes), com build compilada e pronta pra uso (executável) para **Windows** e **Linux** — sem precisar instalar Python ou dependências manualmente. Este repositório é o código-fonte do projeto.
->
-> Esta é a **V1**: o cérebro (Utility AI) e a animação ainda são bem simples de propósito. Não espere um stickman no nível do *Animator vs. Animation* — o movimento é procedural e ainda tem arestas pra lixar. Mais comportamentos e polish estão a caminho.
+## Contents
 
-> ⚠️ **Aviso de build (setembro/2026):** os commits do dia 6 de setembro estão defeituosos para build — a versão compilada para Windows está apresentando um crash ao criar um stickman. Alguns polishs planejados também ficaram de fora dessa leva de commits. **No momento não há nenhuma build disponível no itch.io** (nem `.exe`, nem AppImage, nem `.deb`) — a página existe, mas sem downloads publicados ainda. A build real sai daqui algum tempo. Até lá, quem quiser testar precisa rodar direto pelo código-fonte via `python main.py`.
-
----
-
-## O que é
-
-**Polytes** é um pet de desktop: bonecos-palito (stickmen) que vivem soltos na sua tela, com física de verdade, personalidade gerada proceduralmente e comportamento emergente — não scriptado. Cada stickman decide sozinho se vai ficar parado ou andar, baseado em traços de personalidade e necessidades internas que mudam com o tempo.
-
-O objetivo da V1 não é só "provar o conceito" — é já entregar a sensação de um **ser físico de verdade**, não um shimeji parado na tela.
-
-Você pode arrastar o stickman pelo corpo, soltar ele em movimento e ele reage como um boneco de pano (ragdoll), quicando nas bordas da tela.
-
-O projeto é inspirado na série **Animator vs. Animation**, e construído do zero em Python.
+- [What it is](#what-it-is)
+- [Status](#status)
+- [Running the project](#running-the-project)
+- [Support the project](#support-the-project)
+- [How it works](#how-it-works)
+- [Main systems](#main-systems)
+- [Technologies](#technologies)
+- [Project structure](#project-structure)
+- [V1 scope](#v1-scope)
+- [License](#license)
 
 ---
 
-## Como funciona
+## What it is
 
-```
-Criador de stickman (nome, cor, cabeça oca/cheia)
-              ↓
-Nome → seed determinística (SHA-256) → traits de personalidade
-              ↓
-   energy (0-100)         curiosity (0-100)
-              ↓
-        StickmanNeeds (stamina, boredom mudam com o tempo)
-              ↓
-        StickmanBrain (Utility AI decide IDLE ou WALK)
-              ↓
-   StickmanPhysics (gravidade, colisão, movimento, ragdoll)
-              ↓
-   StickmanAnimator (animação procedural, IK/FK, interpolação)
-              ↓
-        draw_stickman (desenho na janela overlay transparente)
-```
+**Polytes** is a desktop pet: stickmen that live freely on your screen, with real physics, procedurally generated personality, and emergent, non-scripted behavior. Each stickman decides on its own whether to stand still or walk, based on personality traits and internal needs that change over time.
 
-Cada stickman é desenhado numa janela `PyQt5` transparente e sem bordas, cobrindo a tela inteira, com uma máscara (`QRegion`) recalculada a cada frame — só a "silhueta" do boneco é clicável/visível, o resto da janela é invisível.
+The goal of V1 is not just to "prove the concept". It is to already deliver the feeling of a **real physical being**, not a shimeji standing still on your screen.
 
-No Linux, a janela também recebe hints EWMH via X11 (`_NET_WM_STATE_ABOVE`, `SKIP_TASKBAR`, `SKIP_PAGER` e window type `DOCK`), fazendo o stickman ficar sempre visível por cima de outras janelas, sumir do Alt-Tab/taskbar e sobreviver ao "mostrar área de trabalho" (Win+D / Super+D). Testado em GNOME e KDE.
+You can drag the stickman by its body, let go while it's moving, and it reacts like a rag doll (ragdoll), bouncing off the screen edges.
+
+The project is inspired by the series **Animator vs. Animation**, and built from scratch in Python.
 
 ---
 
-## Principais sistemas
+## Status
 
-| Sistema | Descrição |
-|---|---|
-| **Personalidade procedural** | Nome vira seed via `hashlib.sha256`; `random.Random(seed)` isolado gera `energy`/`curiosity`; cabeça oca e cor (matiz) aplicam buffs nos traits |
-| **Necessidades dinâmicas** | `stamina` e `boredom` sobem/descem por frame dependendo do estado atual, modulados por `curiosity`/`energy` |
-| **Utility AI** | `StickmanBrain` soma "utilidades" de 4 fatores pra decidir entre `IDLE` e `WALK`, com cooldown/histerese pra evitar troca de estado a cada frame |
-| **Animação procedural (FK)** | Sistema de juntas genérico via `RIG` (`rig.py`), com interpolação linear entre frames pra evitar animação "travada" |
-| **Ragdoll físico (Verlet/Jakobsen)** | Ao ser arrastado e solto, o corpo vira pontos físicos (`RagPoint`) conectados por constraints de distância (`solve_bone`) — inércia real, arremesso e quique nas bordas da tela |
-| **Colisão com janelas do sistema** | Via `pywinctl`: o stickman pousa em cima de janelas reais, reage a colisão lateral/topo/base, e sai andando de cima delas de volta pro chão real |
-| **Overlay fullscreen + máscara** | Janela cobre a tela inteira desde o início (nunca redimensiona), só a máscara (`setMask`) muda por frame — evita artefatos visuais de composição do Qt |
-| **Always-on-top via X11** | Hints EWMH (`ABOVE`, `SKIP_TASKBAR`, `SKIP_PAGER`, window type `DOCK`) fazem o stickman ficar sempre visível, sumir do Alt-Tab e sobreviver ao "mostrar área de trabalho" |
-| **Ghost process** | Cada stickman tem um processo do sistema operacional próprio (nomeado, visível no gerenciador de tarefas); matar esse processo deleta o stickman de verdade |
+> 🚧 **Under active development.** The code here changes often and there is no official release yet. This is **V1**: the brain (Utility AI) and the animation are intentionally still very simple. Don't expect a stickman at the level of *Animator vs. Animation*; the movement is procedural and still has rough edges. More behaviors and polish are on the way.
+
+- All of V1's core systems are implemented, but **no build has been published yet** (no `.exe`, no AppImage, no `.deb`).
+- A compiled build for **Windows** and **Linux** is planned for [itch.io](https://foxcuukinho.itch.io/polytes), so you won't need to install Python or dependencies manually. The page exists, but has no downloads yet.
+- Until then, running from source with `python main.py` is the only way to use it. This repository is the project's source code.
+
+> ⚠️ **Build warning (September 2026):** the commits from September 6 are broken for building. The compiled Windows version crashes when creating a stickman. Some planned polish also missed that batch of commits.
 
 ---
 
-## Tecnologias
+## Running the project
 
-| Camada | Tecnologia |
-|---|---|
-| Linguagem | Python 3 |
-| UI / Janela | PyQt5 (`QWidget`, `QPainter`, `QTimer`, `QRegion`) |
-| Física | Verlet integration / Jakobsen constraints, implementação própria |
-| Colisão com janelas do sistema | `pywinctl` |
-| Always-on-top (Linux) | `python-xlib` (hints EWMH) |
-| IDE | VS Code + Pylance |
-
----
-
-## Estrutura do projeto
-
-```
-Polytes/
-├── main.py                      # Ponto de entrada
-├── stickman.py                  # Classe Stickman (dados)
-│
-├── Animation/
-│   ├── animations.py            # Frames de IDLE / WALK
-│   ├── stickman_animator.py     # Interpolação e ciclo de animação
-│   ├── rig.py                   # Definição das juntas (RIG)
-│   └── draw_stickman.py         # Desenho do stickman na tela
-│
-├── Body/
-│   └── body_physics.py          # FK (calculate_joints) + Ragdoll (RagPoint, solve_bone, solve_body)
-│
-├── Brain/
-│   ├── stickman_personality.py  # Geração procedural de personalidade
-│   ├── stickman_needs.py        # Stamina / boredom
-│   └── stickman_brain.py        # Utility AI (decisão de estado)
-│
-├── CreatorWindow/
-│   ├── creator_window.py        # Janela de criação (nome, cor, cabeça)
-│   ├── preview_widget.py        # Preview do stickman no editor
-│   └── widgets.py               # Widgets customizados (ex: ToggleSwitch)
-│
-├── Simulation/
-│   ├── simulation.py            # QTimer principal, loop de update
-│   ├── stickman_manager.py      # Coordena todos os stickmen ativos
-│   ├── stickman_ghost_process.py # Processo associado ao stickman
-│   ├── stickman_overlay.py      # Janela transparente + eventos de mouse
-│   ├── stickman_physics.py      # Gravidade, colisão, movimento
-│   └── stickman_ragdoll.py      # Lógica de ragdoll e colisão com janelas
-│
-└── Utils/
-    ├── constants.py              # Constantes globais do projeto
-    ├── helpers.py                # Geometria, colisões, hash, seed, polar_point
-    └── x11_hints.py               # Hints EWMH (always-on-top, dock, skip taskbar/pager)
-```
-
----
-
-## Rodando o projeto
-
-### Pré-requisitos
+### Prerequisites
 
 - Python 3.x
 - PyQt5
-- `python-xlib` (Linux, necessário só pro always-on-top via X11)
+- `python-xlib` (Linux, only needed for always-on-top via X11)
 
 ```bash
 pip install -r requirements.txt
 ```
 
-### Executar
+### Run
 
 ```bash
 python main.py
 ```
 
-Isso abre a janela **Criador de stickman**: escolha um nome, uma cor e se a cabeça é oca ou cheia, clique em **Criar Stickman** e ele aparece na tela.
+This opens the **Stickman creator** window: pick a name, a color, and whether the head is hollow or filled, click **Create Stickman**, and it appears on your screen.
 
-### Interagindo
+### Interacting
 
-- **Clique e arraste** qualquer parte do corpo do stickman pra manipulá-lo como um boneco de pano
-- **Solte em movimento** pra ver o arremesso com inércia
-- O stickman quica nas bordas da tela e reage a colisão com janelas reais enquanto está "voando" (`flying`)
-- Solto, ele volta a andar/ficar parado sozinho, de acordo com a personalidade dele
-- Pra deletar um stickman, encerre o processo correspondente a ele no gerenciador de tarefas do sistema
-
----
-
-## Escopo da V1
-
-**Dentro do escopo:**
-- Física de mundo (gravidade, chão, bordas de tela, colisão com janelas do sistema)
-- Personalidade procedural a partir do nome
-- Necessidades dinâmicas (stamina, boredom) influenciando decisões
-- Utility AI simples (IDLE / WALK)
-- Movimento horizontal real até um alvo escolhido
-- Desenho procedural via sistema de juntas (RIG)
-- Animação com interpolação entre frames
-- Editor mínimo de criação (nome, cor, cabeça oca/cheia)
-- Ragdoll físico completo: arrasto, arremesso com inércia, quique nas bordas e em janelas
-- Always-on-top real via X11 (Linux)
-- Ghost process (deletar stickman via gerenciador de tarefas)
-
-**Fora do escopo da V1** (planejado ou considerado pra V1.x/V2):
-- Colisão entre múltiplos stickmen
-- Auto-colisão do corpo
-- Escalar/subir em janelas do sistema ativamente
-- IA hierárquica de objetivos (`GO_TO_WINDOW`, submissões)
-- Persistência em disco, drift de personalidade de longo prazo
-- Squash/stretch e animações mais refinadas
-- Seletor de cor customizado (barras Hue/Saturação) — V1 usa um color picker próprio, ver `color_picker.py`
-- Formato de arquivo próprio (`.stickfigure`), hub de compartilhamento, presets múltiplos de andar
-- Always-on-top em Wayland (limitação conhecida — hints EWMH não se aplicam fora do X11)
+- **Click and drag** any part of the stickman's body to handle it like a rag doll
+- **Let go while moving** to see the throw with inertia
+- The stickman bounces off the screen edges and reacts to collisions with real windows while "flying" (`flying`)
+- Once released, it goes back to walking/standing still on its own, according to its personality
+- To delete a stickman, end its corresponding process in your system's task manager
 
 ---
 
-## Status & lançamento
+## Support the project
 
-- 🚧 **Em desenvolvimento** — todos os sistemas centrais da V1 estão implementados, mas a build ainda não foi publicada (ver aviso no topo)
-- 📦 Lançamento planejado no [**itch.io**](https://foxcuukinho.itch.io/polytes), com build compilada (executável) pra **Windows** e **Linux**
-- Até lá, rodar via `python main.py` é a única forma de usar
+Want to support Polytes or share your ideas? Check out the project's Patreon: **[patreon.com/c/Polytes](https://www.patreon.com/c/Polytes)**
 
-## Licença
+---
 
-O código do Polytes é licenciado sob **GPL v3**. Isso significa que qualquer versão modificada distribuída (mesmo comercialmente) precisa continuar com o código-fonte aberto sob a mesma licença, e manter os créditos de autoria original.
+## How it works
 
-> **Sobre o nome:** "Polytes" é o nome/marca deste projeto especificamente. Forks e versões modificadas são bem-vindos sob os termos da GPL v3, mas não podem se apresentar como "Polytes" oficial nem usar o nome como se fossem a versão original — use um nome diferente pro seu fork.
+```
+Stickman creator (name, color, hollow/filled head)
+              ↓
+Name → deterministic seed (SHA-256) → personality traits
+              ↓
+   energy (0-100)         curiosity (0-100)
+              ↓
+        StickmanNeeds (stamina, boredom change over time)
+              ↓
+        StickmanBrain (Utility AI decides IDLE or WALK)
+              ↓
+   StickmanPhysics (gravity, collision, movement, ragdoll)
+              ↓
+   StickmanAnimator (procedural animation, IK/FK, interpolation)
+              ↓
+        draw_stickman (drawing on the transparent overlay window)
+```
+
+Each stickman is drawn in a transparent, borderless `PyQt5` window covering the whole screen, with a mask (`QRegion`) recalculated every frame. Only the stickman's "silhouette" is clickable/visible; the rest of the window is invisible.
+
+On Linux, the window also receives EWMH hints via X11 (`_NET_WM_STATE_ABOVE`, `SKIP_TASKBAR`, `SKIP_PAGER`, and window type `DOCK`), keeping the stickman always visible on top of other windows, hidden from Alt-Tab/taskbar, and surviving "show desktop" (Win+D / Super+D). Tested on GNOME and KDE.
+
+---
+
+## Main systems
+
+| System | Description |
+|---|---|
+| **Procedural personality** | The name becomes a seed via `hashlib.sha256`; an isolated `random.Random(seed)` generates `energy`/`curiosity`; hollow head and color (hue) apply buffs to the traits |
+| **Dynamic needs** | `stamina` and `boredom` go up/down every frame depending on the current state, modulated by `curiosity`/`energy` |
+| **Utility AI** | `StickmanBrain` sums the "utilities" of 4 factors to decide between `IDLE` and `WALK`, with cooldown/hysteresis to avoid switching state every frame |
+| **Procedural animation (FK)** | Generic joint system via `RIG` (`rig.py`), with linear interpolation between frames to avoid "choppy" animation |
+| **Physical ragdoll (Verlet/Jakobsen)** | When dragged and released, the body becomes physical points (`RagPoint`) connected by distance constraints (`solve_bone`): real inertia, throwing, and bouncing off the screen edges |
+| **System window collision** | Via `pywinctl`: the stickman lands on top of real windows, reacts to side/top/bottom collisions, and walks off them back to the real ground |
+| **Fullscreen overlay + mask** | The window covers the whole screen from the start (never resized), only the mask (`setMask`) changes per frame, avoiding Qt compositing artifacts |
+| **Always-on-top via X11** | EWMH hints (`ABOVE`, `SKIP_TASKBAR`, `SKIP_PAGER`, window type `DOCK`) keep the stickman always visible, hidden from Alt-Tab, and surviving "show desktop" |
+| **Ghost process** | Each stickman has its own operating system process (named, visible in the task manager); killing that process actually deletes the stickman |
+
+---
+
+## Technologies
+
+| Layer | Technology |
+|---|---|
+| Language | Python 3 |
+| UI / Window | PyQt5 (`QWidget`, `QPainter`, `QTimer`, `QRegion`) |
+| Physics | Verlet integration / Jakobsen constraints, custom implementation |
+| System window collision | `pywinctl` |
+| Always-on-top (Linux) | `python-xlib` (EWMH hints) |
+| IDE | VS Code + Pylance |
+
+---
+
+## Project structure
+
+```
+Polytes/
+├── main.py                      # Entry point
+│
+├── Animation/
+│   ├── animations.py            # IDLE / WALK frames
+│   ├── stickman_animator.py     # Interpolation and animation cycle
+│   ├── rig.py                   # Joint definitions (RIG)
+│   ├── rig_editor.py            # Rig/pose editor
+│   └── draw_stickman.py         # Drawing the stickman on screen
+│
+├── Assets/                      # Fonts and other resources
+│
+├── Body/
+│   └── body_physics.py          # FK (calculate_joints) + Ragdoll (RagPoint, solve_bone, solve_body)
+│
+├── Brain/
+│   ├── stickman_personality.py  # Procedural personality generation
+│   ├── stickman_needs.py        # Stamina / boredom
+│   └── stickman_brain.py        # Utility AI (state decision)
+│
+├── CreatorWindow/
+│   ├── creator_window.py        # Creation window (name, color, head)
+│   ├── color_picker.py          # Custom HSV color picker dialog
+│   ├── preview_widget.py        # Stickman preview in the editor
+│   └── widgets.py               # Custom widgets (e.g. ToggleSwitch)
+│
+├── Simulation/
+│   ├── simulation.py            # Main QTimer, update loop
+│   ├── stickman.py              # Stickman class (data)
+│   ├── stickman_manager.py      # Coordinates all active stickmen
+│   ├── stickman_ghost_process.py # Process tied to the stickman
+│   ├── stickman_overlay.py      # Transparent window + mouse events
+│   ├── stickman_physics.py      # Gravity, collision, movement
+│   └── stickman_ragdoll.py      # Ragdoll logic and window collision
+│
+└── Utils/
+    ├── constants.py              # Global project constants
+    ├── helpers.py                # Geometry, collisions, hash, seed, polar_point
+    └── x11_hints.py              # EWMH hints (always-on-top, dock, skip taskbar/pager)
+```
+
+---
+
+## V1 scope
+
+**In scope:**
+- World physics (gravity, ground, screen edges, system window collision)
+- Procedural personality from the name
+- Dynamic needs (stamina, boredom) influencing decisions
+- Simple Utility AI (IDLE / WALK)
+- Real horizontal movement toward a chosen target
+- Procedural drawing via the joint system (RIG)
+- Animation with interpolation between frames
+- Minimal creation editor (name, color, hollow/filled head)
+- Full physical ragdoll: dragging, throwing with inertia, bouncing off edges and windows
+- Real always-on-top via X11 (Linux)
+- Ghost process (delete a stickman via the task manager)
+
+**Out of V1 scope** (planned or considered for V1.x/V2):
+- Collision between multiple stickmen
+- Body self-collision
+- Actively climbing system windows
+- Hierarchical goal AI (`GO_TO_WINDOW`, sub-goals)
+- Disk persistence, long-term personality drift
+- Squash/stretch and more refined animations
+- Custom color picker (Hue/Saturation bars): V1 uses its own color picker, see `color_picker.py`
+- Own file format (`.stickfigure`), sharing hub, multiple walk presets
+- Always-on-top on Wayland (known limitation, EWMH hints don't apply outside X11)
+
+---
+
+## License
+
+Polytes' code is licensed under **GPL v3**. This means any modified version that is distributed (even commercially) must keep its source code open under the same license, and keep the original authorship credits.
+
+> **About the name:** "Polytes" is the name/brand of this specific project. Forks and modified versions are welcome under the terms of the GPL v3, but they can't present themselves as the official "Polytes" or use the name as if they were the original version. Please use a different name for your fork.
