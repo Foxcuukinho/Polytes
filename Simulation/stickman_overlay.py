@@ -1,11 +1,16 @@
 from PyQt5.QtWidgets import QApplication, QWidget
-from PyQt5.QtGui import QPainter, QColor,QPen, QRegion
-from PyQt5.QtCore import Qt
+from PyQt5.QtGui import QPainter, QColor, QPen, QRegion
+from PyQt5.QtCore import Qt, QRect
 from Animation.draw_stickman import draw_stickman
-from Utils.helpers import get_screen_geometry
-from Utils.constants import STICKMAN_WIDTH, STICKMAN_HEIGHT
-from Body.body_physics import calculate_joints, create_ragpoints, get_drag_part, move_grab_part
-from Utils.x11_hints import set_always_on_top_x11
+from Utils.helpers import get_screen_geometry, is_mirrored
+from Utils.constants import STICKMAN_WIDTH, STICKMAN_HEIGHT, RAGDOLL_SPIN_FACTOR
+from Body.body_physics import (
+    calculate_joints,
+    create_ragpoints,
+    get_drag_part,
+    move_grab_part,
+    apply_spin
+)
 
 class StickmanOverlay(QWidget):
 
@@ -115,11 +120,16 @@ class StickmanOverlay(QWidget):
                 - self.drag_velocity_y
             )
 
+        apply_spin(
+            self.stickman.ragpoints,
+            self.drag_velocity_x * RAGDOLL_SPIN_FACTOR
+        )
+
         self.stickman.grab_part = None
 
         self.stickman.velocity_y = 0
         self.stickman.velocity_x = 0
-
+        
     def center_on_screen(self):
         screen_x, screen_y, screen_width, screen_height = get_screen_geometry()
 
@@ -131,68 +141,32 @@ class StickmanOverlay(QWidget):
         self.update_mask()
 
     def update_mask(self):
-
-        self.stickman.joints = calculate_joints(self.stickman.current_frame, self.stickman, self.stickman.head_radius)
+        self.stickman.joints = calculate_joints(
+            self.stickman.current_frame, self.stickman, self.stickman.head_radius
+        )
 
         def mirror_x(px):
-            if self.stickman.direction == 1 and not self.stickman.holding:
+            if is_mirrored(self.stickman):
                 return (2 * self.stickman.x + self.stickman.width) - px
             return px
 
-        mask_region = None
+        xs = []
+        ys = []
 
-        bones = [
-            ('neck', 'hip'),
-            ('neck', 'right_elbow'),
-            ('right_elbow', 'right_hand'),
-            ('neck', 'left_elbow'),
-            ('left_elbow', 'left_hand'),
-            ('hip', 'right_knee'),
-            ('right_knee', 'right_foot'),
-            ('hip', 'left_knee'),
-            ('left_knee', 'left_foot'),
-        ]
+        for joint in self.stickman.joints.values():
+            x, y = joint['position']
+            xs.append(mirror_x(x))
+            ys.append(y)
 
-        num_points = 5
-        radius = 15
+        margin = self.stickman.head_radius * 2 + 10
 
-        for start_joint, end_joint in bones:
-            x1, y1 = self.stickman.joints[start_joint]['position']
-            x2, y2 = self.stickman.joints[end_joint]['position']
+        left = int(min(xs) - margin - self.x())
+        top = int(min(ys) - margin - self.y())
+        width = int(max(xs) - min(xs) + margin * 2)
+        height = int(max(ys) - min(ys) + margin * 2)
 
-            x1 = mirror_x(x1)
-            x2 = mirror_x(x2)
-
-            for i in range(num_points):
-                progress = i / (num_points - 1)
-
-                x = x1 + (x2 - x1) * progress
-                y = y1 + (y2 - y1) * progress
-
-                circle = QRegion(
-                    int(x - radius - self.x()),
-                    int(y - radius - self.y()),
-                    radius * 2,
-                    radius * 2
-                )
-
-                mask_region = circle if mask_region is None else mask_region + circle
-
-        head_x, head_y = self.stickman.joints['head']['position']
-        head_x = mirror_x(head_x)
-        head_r = int(self.stickman.head_radius * 1.5)
-
-        head_circle = QRegion(
-            int(head_x - head_r - self.x()),
-            int(head_y - head_r - self.y()),
-            head_r * 2,
-            head_r * 2
-        )
-
-        mask_region = mask_region + head_circle
-
-        self.setMask(mask_region)
-
+        self.setMask(QRegion(QRect(left, top, width, height)))
+    
     def apply_x11_hints(self):
         from Utils.x11_hints import set_window_type_dock, set_always_on_top_x11
         set_window_type_dock(int(self.winId()))

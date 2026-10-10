@@ -1,11 +1,22 @@
 from PyQt5.QtWidgets import QApplication
 import pywinctl as pwc
-import hashlib, math, os, sys
+import hashlib
+import math
+import sys
+import os
 from Utils.constants import GROUND_SNAP_TOLERANCE
 
 
 def clamp(value, min_value, max_value):
     return max(min_value, min(value, max_value))
+
+
+def is_mirrored(stickman):
+    # Regra única de espelhamento, usada pelo desenho e pela máscara.
+    # Espelha só no modo FK (andando/parado). No ragdoll (holding/flying)
+    # os joints já vêm absolutos e não devem ser espelhados.
+    ragdoll_active = stickman.holding or stickman.flying
+    return stickman.direction == 1 and not ragdoll_active
 
 
 def rectangle_overlap(
@@ -105,6 +116,95 @@ def detect_collision_with_ragpoint_and_window(
         bottom_collision
     )
 
+
+def subtract_interval(original, covering):
+
+    original_left, original_right = original
+    covering_left, covering_right = covering
+
+    no_overlap = (
+        covering_right <= original_left
+        or covering_left >= original_right
+    )
+
+    if no_overlap:
+        return [original]
+
+    remaining = []
+
+    if covering_left > original_left:
+        remaining.append((original_left, covering_left))
+
+    if covering_right < original_right:
+        remaining.append((covering_right, original_right))
+
+    return remaining
+
+
+def get_stacking_handles():
+
+    if sys.platform != "linux":
+        return None
+
+    try:
+        from ewmhlib import EwmhRoot
+        return EwmhRoot().getClientListStacking()
+    except Exception:
+        return None
+
+
+def get_visible_top_intervals(window, all_windows, stacking_handles):
+
+    full_interval = (window.left, window.left + window.width)
+
+    if stacking_handles is None:
+        return [full_interval]
+
+    window_handle = window.getHandle()
+
+    if window_handle not in stacking_handles:
+        return [full_interval]
+
+    window_index = stacking_handles.index(window_handle)
+
+    intervals = [full_interval]
+
+    for other in all_windows:
+        if other.getHandle() == window_handle:
+            continue
+
+        other_handle = other.getHandle()
+
+        if other_handle not in stacking_handles:
+            continue
+
+        other_index = stacking_handles.index(other_handle)
+
+        if other_index <= window_index:
+            continue
+
+        covers_top_line = (
+            other.top <= window.top
+            and other.top + other.height > window.top
+        )
+
+        if not covers_top_line:
+            continue
+
+        covering_interval = (other.left, other.left + other.width)
+
+        new_intervals = []
+
+        for interval in intervals:
+            new_intervals.extend(
+                subtract_interval(interval, covering_interval)
+            )
+
+        intervals = new_intervals
+
+    return intervals
+
+
 def compute_ground_y_and_limit(
     stickman,
     max_y,
@@ -112,50 +212,48 @@ def compute_ground_y_and_limit(
     screen_x,
     screen_y,
     screen_width,
-    screen_height
+    screen_height,
+    visible_intervals=None
 ):
     candidates = [
         (
             screen_y + screen_height,
-            (screen_x, screen_width),
-            None
+            (screen_x, screen_width)
         )
     ]
 
-    hip_x = stickman.ragpoints["hip"].x
-
     for window in windows:
+        if window.fullscreen:
+            continue
+
         if window.top < max_y - GROUND_SNAP_TOLERANCE:
             continue
 
-        window_left = window.left
-        window_right = window.left + window.width
-
-        overlaps_horizontally = (
-            hip_x > window_left
-            and hip_x < window_right
+        intervals = (
+            visible_intervals.get(window.getHandle(), [])
+            if visible_intervals is not None
+            else get_visible_top_intervals(window, windows, get_stacking_handles())
         )
 
-        if overlaps_horizontally:
-            candidates.append(
-                (
-                    window.top,
-                    (window.left, window.width),
-                    window.getHandle()
-                )
+        for start, end in intervals:
+            stickman_left = stickman.x
+            stickman_right = stickman.x + stickman.width
+
+            overlaps_horizontally = (
+                stickman_left < end
+                and stickman_right > start
             )
 
-    current_handle = getattr(stickman, "ground_window_handle", None)
+            if overlaps_horizontally:
+                candidates.append(
+                    (
+                        window.top,
+                        (window.left, window.width)
+                    )
+                )
 
-    if current_handle is not None:
-        for candidate in candidates:
-            if candidate[2] == current_handle:
-                stickman.ground_window_handle = candidate[2]
-                return candidate[0], candidate[1]
+    return min(candidates, key=lambda candidate: candidate[0])
 
-    chosen = min(candidates, key=lambda candidate: candidate[0])
-    stickman.ground_window_handle = chosen[2]
-    return chosen[0], chosen[1]
 
 def seed_from_name(name):
     hash_value = hashlib.sha256(name.encode())
@@ -188,6 +286,20 @@ def get_screen_geometry():
     )
 
 
+class WindowSnapshot:
+    __slots__ = ("left", "top", "width", "height", "handle", "fullscreen")
+
+    def __init__(self, window, fullscreen=False):
+        self.left = window.left
+        self.top = window.top
+        self.width = window.width
+        self.height = window.height
+        self.handle = window.getHandle()
+        self.fullscreen = fullscreen
+
+    def getHandle(self):
+        return self.handle
+
 def get_windows():
     windows = pwc.getAllWindows()
     valid_windows = []
@@ -197,17 +309,22 @@ def get_windows():
     )
 
     screen_area = screen_width * screen_height
+    own_pid = os.getpid()
 
     for window in windows:
         if window.isMinimized or not window.isVisible:
             continue
 
-        window_area = window.width * window.height
+        is_fullscreen = window.width * window.height >= screen_area * 0.95
 
-        if window_area >= screen_area * 0.95:
-            continue
+        if is_fullscreen:
+            try:
+                if window.getPID() == own_pid:
+                    continue
+            except Exception:
+                pass
 
-        valid_windows.append(window)
+        valid_windows.append(WindowSnapshot(window, is_fullscreen))
 
     return valid_windows
 

@@ -2,7 +2,8 @@ from PyQt5.QtGui import QPainter, QPen, QPainterPath, QBrush
 from PyQt5.QtCore import Qt
 from Body.body_physics import calculate_joints
 from Utils.constants import HOLLOW_HEAD_DIAMETER, FILLED_HEAD_DIAMETER, STROKE
-   
+from Utils.helpers import is_mirrored
+
 def draw_head(painter, head, width, height):
     painter.drawEllipse(head[0], head[1], width, height)
 
@@ -44,11 +45,9 @@ def draw_stickman(painter, stickman):
     pen.setCapStyle(Qt.RoundCap)
     painter.setPen(pen)
 
-
-
-    if stickman.direction == 1 and not stickman.holding:
-            painter.translate(2 * stickman.x + stickman.width, 0)
-            painter.scale(-1, 1)
+    if is_mirrored(stickman):
+        painter.translate(2 * stickman.x + stickman.width, 0)
+        painter.scale(-1, 1)
     
     joints = calculate_joints(frame, stickman, head_radius)
 
@@ -61,13 +60,12 @@ def draw_stickman(painter, stickman):
         painter.setBrush(QBrush(stickman.color))
         draw_head(painter, joints['head']['position'], head_diameter, head_diameter)
 
-
     limbs = [
         ("neck", "right_elbow", "right_hand", draw_arm),
         ("neck", "left_elbow", "left_hand", draw_arm),
         ("hip", "right_knee", "right_foot", draw_leg),
         ("hip", "left_knee", "left_foot", draw_leg),
-        ]
+    ]
 
     draw_torso(
         painter,
@@ -80,7 +78,7 @@ def draw_stickman(painter, stickman):
             joints[limb[0]]['position'],
             joints[limb[1]]['position'],
             joints[limb[2]]['position']
-            )
+        )
 
         limb[3](
             painter,

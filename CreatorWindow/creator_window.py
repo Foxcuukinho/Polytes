@@ -121,8 +121,8 @@ class TitleBar(QWidget):
 
         self.title_label = QLabel(title)
         self.title_label.setStyleSheet(
-            f"color: {TITLE_TEXT_COLOR}; font-family: 'Verdana', Arial, sans-serif; "
-            f"font-size: 12px; font-weight: 500; letter-spacing: 0.5px; background: transparent;"
+            f"color: {TITLE_TEXT_COLOR}; font-family: 'Comic Relief', Arial, sans-serif; "
+            f"font-size: 13px; font-weight: bold; letter-spacing: 0.5px; background: transparent;"
         )
 
         self.minimize_button = TitleBarButton("minimize")
@@ -184,7 +184,7 @@ class CreatorWindow(QWidget):
 
         self.setWindowFlags(Qt.FramelessWindowHint | Qt.Window)
         self.setAttribute(Qt.WA_TranslucentBackground)
-        self.resize(250, 440)
+        self.setFixedSize(265, 440)
 
         self._is_maximized = False
         self._normal_geometry = None
@@ -209,8 +209,8 @@ class CreatorWindow(QWidget):
         self.name_input = QLineEdit()
         self.name_input.setPlaceholderText("Untitled")
 
-        self.color_button = QPushButton("Cor")
-        self.create_stickman_button = QPushButton("Criar Stickman")
+        self.color_button = QPushButton("Color")
+        self.create_stickman_button = QPushButton("Create Stickman")
 
         self.hollow_head_label = QLabel('Hollow Head')
         self.hollow_head_checkbox = ToggleSwitch()

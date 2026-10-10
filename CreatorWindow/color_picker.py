@@ -199,7 +199,7 @@ class ColorPickerDialog(QDialog):
         self.cancel_button = QPushButton("Cancelar")
         self.title_label = QLabel("Select Color")
         self.title_label.setAlignment(Qt.AlignCenter)
-        self.select_button = QPushButton("Selecionar")
+        self.select_button = QPushButton("Select")
 
         self.cancel_button.setStyleSheet(f"""
             QPushButton {{

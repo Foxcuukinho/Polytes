@@ -216,4 +216,16 @@ def move_grab_part(stickman, mouse_x, mouse_y, offset_x, offset_y):
 
             stickman.ragpoints[ragpoint].x = stickman.ragpoints[ragpoint].old_x = mouse_x - offset_x
             stickman.ragpoints[ragpoint].y = stickman.ragpoints[ragpoint].old_y = mouse_y - offset_y
-            
+
+def apply_spin(ragpoints, angular_velocity):
+        points = list(ragpoints.values())
+
+        center_x = sum(p.x for p in points) / len(points)
+        center_y = sum(p.y for p in points) / len(points)
+
+        for point in points:
+            radius_x = point.x - center_x
+            radius_y = point.y - center_y
+
+            point.old_x += radius_y * angular_velocity
+            point.old_y -= radius_x * angular_velocity
