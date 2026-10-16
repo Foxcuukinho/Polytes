@@ -14,17 +14,17 @@ class Stickman:
 
     def __init__(self, name, color, hollow_head):
 
-        # Configurações Principais
+        # Main settings
         self.name = name
         self.color = color
         self.hollow_head = hollow_head
 
-        # Configurações de janela
+        # Window settings
         self.width = STICKMAN_WIDTH
         self.height = STICKMAN_HEIGHT
         self.ghost_process = None
 
-        # Física
+        # Physics
         self.x = 0
         self.y = 0
         self.velocity_y = 0
@@ -35,21 +35,21 @@ class Stickman:
         self.overlap_windows = []
         self.ground_window_handle = None
 
-        # Misc
+        # Miscellaneous
         self.head_radius = HOLLOW_HEAD_DIAMETER //2 if self.hollow_head else FILLED_HEAD_DIAMETER // 2
 
-        # Ragdol
+        # Ragdoll
         self.holding = False
         self.flying = False
         self.grab_part = None
 
-        # Cerébro
+        # Brain
         self.state = 'IDLE'
 
-        # TODO: Na V2, tirar esse inline
+        # TODO: In V2, move this inline value.
         self.energy, self.curiosity = generate_personality(name, hollow_head, color)
 
-        # TODO: Pensei em colocar em utils.py tipo DEFAULT_NEEDS
+        # TODO: Consider moving this to utils.py as DEFAULT_NEEDS.
         self.stamina = 100
         self.boredom = 45
 
@@ -58,7 +58,7 @@ class Stickman:
 
         self.decide_cooldown = STICKMAN_DEFAULT_DECIDE_COOLDOWN
 
-        # Animação
+        # Animation
         self.animation_frame_index = 0
         self.animation_timer = 0
         self.current_frame = ANIMATIONS['IDLE']['frames'][0]

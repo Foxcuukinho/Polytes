@@ -1,50 +1,56 @@
 from Utils.constants import (
-    WINDOW_UPDATE_INTERVAL_FRAMES,
     RAGPOINT_RADIUS,
     RAGDOLL_BOUNCE_FACTOR,
     RAGDOLL_CENTER_DAMPING_X,
     RAGDOLL_CENTER_DAMPING_Y,
     RAGDOLL_SOLVER_ITERATIONS,
+    LANDING_RECOVERY_TIME,
     STICKMAN_WIDTH,
     STICKMAN_HEIGHT,
     STROKE
 )
 from Utils.helpers import (
-    get_windows,
     detect_collision_with_ragpoint_and_window,
-    get_screen_geometry,
-    get_stacking_handles,
-    get_visible_top_intervals,
+    get_work_area_geometry,
     compute_ground_y_and_limit,
-    rectangle_overlap
+    rectangle_overlap,
+    measure
 )
-from Body.body_physics import calculate_joints, create_ragpoints, solve_body
+from Body.body_physics import sync_ragpoints_to_fk, solve_body
 
 
 class StickmanRagdoll:
     def __init__(self):
-        self.screen_x, self.screen_y, self.screen_width, self.screen_height = get_screen_geometry()
+        self.refresh_screen_geometry()
 
         self.windows = []
-        self.stacking_handles = None
         self.visible_intervals = {}
-        self.frames_since_window_update = 0
 
-        # Cache do bounding box, valido so dentro de uma chamada de apply_ragdoll
+        # Bounding-box cache, valid only during one call to apply_ragdoll.
         self._bounds = None
 
-    def update(self, stickman, windows):
+    def refresh_screen_geometry(self):
+        (
+            self.screen_x,
+            self.screen_y,
+            self.screen_width,
+            self.screen_height
+        ) = get_work_area_geometry()
+
+    def update(self, stickman, windows, visible_intervals):
+        # windows and visible_intervals are provided by the manager (computed
+        # once every WINDOW_UPDATE_INTERVAL_FRAMES, not every frame).
+        # The window list is replaced only when the manager refreshes its cache.
+        # Use that opportunity to read the screen geometry again as well.
+        if windows is not self.windows:
+            self.refresh_screen_geometry()
+
         self.windows = windows
+        self.visible_intervals = visible_intervals
 
         if not (stickman.flying or stickman.holding):
             self.check_ground_lost(stickman)
             return
-
-        self.stacking_handles = get_stacking_handles()
-        self.visible_intervals = {
-            window.getHandle(): get_visible_top_intervals(window, self.windows, self.stacking_handles)
-            for window in self.windows
-        }
 
         self.apply_ragdoll(stickman)
 
@@ -122,6 +128,8 @@ class StickmanRagdoll:
         ragdoll_width = max_x - min_x
         ragdoll_height = max_y - min_y
 
+        hip = stickman.ragpoints["hip"]
+
         for window in self.windows:
             handle = window.getHandle()
 
@@ -130,8 +138,18 @@ class StickmanRagdoll:
                 min_x, min_y, ragdoll_width, ragdoll_height
             )
 
-            if handle in stickman.overlap_windows and not overlap:
-                stickman.overlap_windows.remove(handle)
+            if handle in stickman.overlap_windows:
+                if not overlap:
+                    stickman.overlap_windows.remove(handle)
+                continue
+
+            hip_inside_window = (
+                window.left <= hip.x <= window.left + window.width
+                and window.top <= hip.y <= window.top + window.height
+            )
+
+            if overlap and hip_inside_window:
+                stickman.overlap_windows.append(handle)
 
     def resolve_flying_landing(self, stickman):
         if not stickman.flying:
@@ -154,6 +172,18 @@ class StickmanRagdoll:
 
         if max_y >= stickman.ground_y:
             stickman.flying = False
+            self.on_landed(stickman)
+
+    def on_landed(self, stickman):
+        # After landing, remain still for a while instead of walking away.
+        # Set the state to IDLE and extend the brain cooldown so decide() runs
+        # again only after the recovery period.
+        stickman.state = 'IDLE'
+        stickman.target_x = None
+        stickman.velocity_x = 0
+        stickman.decide_cooldown = LANDING_RECOVERY_TIME
+        stickman.animation_frame_index = 0
+        stickman.animation_timer = 0
 
     def check_ground_lost(self, stickman):
         if stickman.flying or stickman.holding:
@@ -165,18 +195,7 @@ class StickmanRagdoll:
             stickman.x > ground_left + ground_width
             or stickman.x + stickman.width < ground_left
         ):
-            stickman.joints = calculate_joints(
-                stickman.current_frame,
-                stickman,
-                stickman.head_radius
-            )
-
-            stickman.ragpoints = create_ragpoints(
-                stickman.joints,
-                stickman.x,
-                stickman.y
-            )
-
+            sync_ragpoints_to_fk(stickman)
             stickman.flying = True
 
     def resolve_flying_edge_collision(self, stickman):
@@ -243,7 +262,8 @@ class StickmanRagdoll:
                     left_collision,
                     right_collision,
                     top_collision,
-                    bottom_collision
+                    bottom_collision,
+                    collision_time
                 ) = detect_collision_with_ragpoint_and_window(
                     ragpoint,
                     radius,
@@ -254,8 +274,12 @@ class StickmanRagdoll:
                     continue
 
                 if top_collision:
+                    collision_x = (
+                        ragpoint.old_x
+                        + (ragpoint.x - ragpoint.old_x) * collision_time
+                    )
                     point_visible = any(
-                        start <= ragpoint.x <= end
+                        start <= collision_x <= end
                         for start, end in visible_intervals
                     )
                     if not point_visible:
@@ -301,8 +325,8 @@ class StickmanRagdoll:
                     self.bounce_y(points)
 
     def damp_center_velocity(self, stickman):
-        # Amortece so a velocidade MEDIA do corpo (deslocamento).
-        # A velocidade de cada ponto em relacao a media (o giro) fica intacta.
+        # Damp only the body's mean velocity (translation).
+        # Each point's velocity relative to the mean (rotation) remains unchanged.
         if not stickman.flying:
             return
 
@@ -319,7 +343,7 @@ class StickmanRagdoll:
         if not (stickman.holding or stickman.flying):
             return
 
-        # O cache so vale dentro de um frame
+        # The cache is valid only for this frame.
         self._bounds = None
 
         for name, ragpoint in stickman.ragpoints.items():
@@ -337,18 +361,18 @@ class StickmanRagdoll:
 
         self.damp_center_velocity(stickman)
 
-        # Os pontos mudaram (update + solver + damping): invalida de novo
+        # Points changed (update + solver + damping), so invalidate the cache again.
         self._bounds = None
 
         self.update_overlapped_windows_in_holding(stickman)
         self.update_overlapped_windows_in_flying(stickman)
         self.resolve_flying_edge_collision(stickman)
+
+        # Note: this includes part of resolve_flying_landing when landing on a window.
         self.resolve_flying_window_collision(stickman)
         self.resolve_flying_landing(stickman)
 
         if stickman.flying:
-            self.check_ground_lost(stickman)
-
             min_x, min_y, max_x, max_y = (
                 self.compute_ragdoll_bounds(stickman)
             )

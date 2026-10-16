@@ -229,3 +229,11 @@ def apply_spin(ragpoints, angular_velocity):
 
             point.old_x += radius_y * angular_velocity
             point.old_y -= radius_x * angular_velocity
+def sync_ragpoints_to_fk(stickman):
+    stickman.joints = calculate_joints(
+        stickman.current_frame, stickman, stickman.head_radius
+    )
+    stickman.ragpoints = create_ragpoints(
+        stickman.joints, stickman.x, stickman.y
+    )
+            

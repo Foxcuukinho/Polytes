@@ -1,4 +1,4 @@
-from PyQt5.QtCore import QTimer
+from PyQt5.QtCore import QTimer, Qt
 from Utils.constants import FRAME_DURATION_MS
 
 class Simulation:
@@ -7,10 +7,11 @@ class Simulation:
 
         self.manager = manager
 
-        self.timer = QTimer() 
-        # Esse é o timer principal do projeto, toda a física e cérebro rodam nele
+        self.timer = QTimer()
+        # PreciseTimer: avoids the default timer's rounding (~15 ms on Windows)
+        self.timer.setTimerType(Qt.PreciseTimer)
+        # This is the project's main timer; all physics and AI updates run on it
         self.timer.timeout.connect(self.update)
-
 
     def update(self):
         self.manager.update_stickman()

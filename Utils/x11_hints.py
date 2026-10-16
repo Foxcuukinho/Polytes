@@ -1,65 +1,59 @@
-# Utils/x11_hints.py
-from Xlib.display import Display
-from Xlib import X
-import Xlib.Xatom
+import sys
 
-def set_always_on_top_x11(window_id):
+IS_LINUX = sys.platform.startswith("linux")
 
-    display = Display()
-    root = display.screen().root
-    window = display.create_resource_object('window', window_id)
+if IS_LINUX:
+    try:
+        from Xlib.display import Display
+        from Xlib import X
+        import Xlib.Xatom
+        from Xlib.protocol import event as xevent
+    except ImportError:
+        IS_LINUX = False  # Linux, mas sem python-xlib instalado
 
-    def atom(name):
-        return display.intern_atom(name)
-
-    net_wm_state = atom('_NET_WM_STATE')
-    states = [
-        atom('_NET_WM_STATE_ABOVE'),
-        atom('_NET_WM_STATE_SKIP_TASKBAR'),
-        atom('_NET_WM_STATE_SKIP_PAGER'),
-    ]
-
-
-    for state in states:
-        event = protocol_client_message(window, net_wm_state, state)
-        root.send_event(
-            event,
-            event_mask=X.SubstructureRedirectMask | X.SubstructureNotifyMask
+    def protocol_client_message(window, message_type, state_atom):
+        return xevent.ClientMessage(
+            window=window,
+            client_type=message_type,
+            data=(32, [1, state_atom, 0, 1, 0])
         )
 
-    display.flush()
+    def set_always_on_top_x11(window_id):
+        display = Display()
+        root = display.screen().root
+        window = display.create_resource_object('window', window_id)
 
-def set_window_type_dock(window_id):
+        net_wm_state = display.intern_atom('_NET_WM_STATE')
+        states = [
+            display.intern_atom('_NET_WM_STATE_ABOVE'),
+            display.intern_atom('_NET_WM_STATE_SKIP_TASKBAR'),
+            display.intern_atom('_NET_WM_STATE_SKIP_PAGER'),
+        ]
 
-    display = Display()
-    window = display.create_resource_object('window', window_id)
+        for state in states:
+            event = protocol_client_message(window, net_wm_state, state)
+            root.send_event(
+                event,
+                event_mask=X.SubstructureRedirectMask | X.SubstructureNotifyMask
+            )
+        display.flush()
 
-    def atom(name):
-        return display.intern_atom(name)
+    def set_window_type_dock(window_id):
+        display = Display()
+        window = display.create_resource_object('window', window_id)
 
-    net_wm_window_type = atom('_NET_WM_WINDOW_TYPE')
-    dock_type = atom('_NET_WM_WINDOW_TYPE_DOCK')
+        window.change_property(
+            display.intern_atom('_NET_WM_WINDOW_TYPE'),
+            Xlib.Xatom.ATOM,
+            32,
+            [display.intern_atom('_NET_WM_WINDOW_TYPE_DOCK')]
+        )
+        display.flush()
 
-    window.change_property(
-        net_wm_window_type,
-        Xlib.Xatom.ATOM,
-        32,
-        [dock_type]
-    )
+else:
+    # On other operating systems, these functions exist but do nothing.
+    def set_always_on_top_x11(window_id):
+        pass
 
-    display.flush()
-
-def protocol_client_message(window, message_type, state_atom):
-    from Xlib.protocol import event as xevent
-
-    return xevent.ClientMessage(
-        window=window,
-        client_type=message_type,
-        data=(32, [
-            1,  # _NET_WM_STATE_ADD
-            state_atom,
-            0,
-            1,  # source indication: aplicação normal
-            0
-        ])
-    )
+    def set_window_type_dock(window_id):
+        pass

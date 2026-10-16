@@ -4,17 +4,51 @@ import hashlib
 import math
 import sys
 import os
-from Utils.constants import GROUND_SNAP_TOLERANCE
+import subprocess
+from Utils.constants import GROUND_SNAP_TOLERANCE, FONTS_DIR, RCEDIT_PATH
+from PyQt5.QtGui import QFontDatabase
+from PyQt5.QtCore import Qt
+import shutil
+import tempfile
+import uuid
+import sys
+import ctypes
 
+VK_LBUTTON = 0x01
+VK_RBUTTON = 0x02
+SM_SWAPBUTTON = 23
+
+VK_LBUTTON = 0x01
+
+
+def is_left_mouse_pressed():
+    # On Windows, ask the operating system whether the primary button is
+    # currently pressed. QApplication.mouseButtons() is not suitable here: it
+    # only knows which events Qt received, and if Alt+Tab swallows the release
+    # event, it keeps reporting the button as pressed indefinitely.
+    if sys.platform == "win32":
+        import ctypes
+
+        user32 = ctypes.windll.user32
+
+        # GetAsyncKeyState checks the PHYSICAL button. If buttons are swapped
+        # in system settings, the "primary" button (which Qt calls left) is
+        # the physical right button.
+        swapped = user32.GetSystemMetrics(SM_SWAPBUTTON) != 0
+        virtual_key = VK_RBUTTON if swapped else VK_LBUTTON
+
+        return bool(user32.GetAsyncKeyState(virtual_key) & 0x8000)
+
+    return bool(QApplication.mouseButtons() & Qt.LeftButton)
 
 def clamp(value, min_value, max_value):
     return max(min_value, min(value, max_value))
 
 
 def is_mirrored(stickman):
-    # Regra única de espelhamento, usada pelo desenho e pela máscara.
-    # Espelha só no modo FK (andando/parado). No ragdoll (holding/flying)
-    # os joints já vêm absolutos e não devem ser espelhados.
+    # Single mirroring rule, used by both drawing and the mask.
+    # Mirror only in FK mode (walking/idle). In ragdoll mode (holding/flying),
+    # joints are already absolute and must not be mirrored.
     ragdoll_active = stickman.holding or stickman.flying
     return stickman.direction == 1 and not ragdoll_active
 
@@ -78,7 +112,63 @@ def detect_collision_with_ragpoint_and_window(
     )
 
     if not overlap:
-        return False, False, False, False, False
+        start_x = ragpoint.old_x
+        start_y = ragpoint.old_y
+        delta_x = ragpoint.x - start_x
+        delta_y = ragpoint.y - start_y
+
+        expanded_left = first_x - ragpoint_radius
+        expanded_right = first_right + ragpoint_radius
+        expanded_top = first_y - ragpoint_radius
+        expanded_bottom = first_bottom + ragpoint_radius
+
+        starts_inside = (
+            expanded_left < start_x < expanded_right
+            and expanded_top < start_y < expanded_bottom
+        )
+
+        if starts_inside:
+            return False, False, False, False, False, 1.0
+
+        if delta_x == 0:
+            if not expanded_left <= start_x <= expanded_right:
+                return False, False, False, False, False, 1.0
+            entry_x = float("-inf")
+            exit_x = float("inf")
+        else:
+            first_x_time = (expanded_left - start_x) / delta_x
+            second_x_time = (expanded_right - start_x) / delta_x
+            entry_x = min(first_x_time, second_x_time)
+            exit_x = max(first_x_time, second_x_time)
+
+        if delta_y == 0:
+            if not expanded_top <= start_y <= expanded_bottom:
+                return False, False, False, False, False, 1.0
+            entry_y = float("-inf")
+            exit_y = float("inf")
+        else:
+            first_y_time = (expanded_top - start_y) / delta_y
+            second_y_time = (expanded_bottom - start_y) / delta_y
+            entry_y = min(first_y_time, second_y_time)
+            exit_y = max(first_y_time, second_y_time)
+
+        collision_time = max(entry_x, entry_y)
+        exit_time = min(exit_x, exit_y)
+
+        if collision_time > exit_time or collision_time < 0 or collision_time > 1:
+            return False, False, False, False, False, 1.0
+
+        hit_x = abs(entry_x - collision_time) < 1e-9
+        hit_y = abs(entry_y - collision_time) < 1e-9
+
+        return (
+            True,
+            hit_x and delta_x > 0,
+            hit_x and delta_x < 0,
+            hit_y and delta_y > 0,
+            hit_y and delta_y < 0,
+            collision_time
+        )
 
     left_collision = (
         second_right > first_x and
@@ -113,7 +203,8 @@ def detect_collision_with_ragpoint_and_window(
         left_collision,
         right_collision,
         top_collision,
-        bottom_collision
+        bottom_collision,
+        1.0
     )
 
 
@@ -142,6 +233,28 @@ def subtract_interval(original, covering):
 
 
 def get_stacking_handles():
+    # Return handles from bottom to top (the same order as X11's
+    # _NET_CLIENT_LIST_STACKING) so the rest of the code works the same on
+    # both systems. None means stacking information is unavailable.
+
+    if sys.platform == "win32":
+        try:
+            import win32gui
+            import win32con
+
+            handles = []
+            hwnd = win32gui.GetTopWindow(None)
+
+            # Walk down from the top of the stack. The limit prevents an
+            # infinite loop if a window is destroyed during the scan.
+            while hwnd and len(handles) < 2000:
+                handles.append(hwnd)
+                hwnd = win32gui.GetWindow(hwnd, win32con.GW_HWNDNEXT)
+
+            handles.reverse()
+            return handles
+        except Exception:
+            return None
 
     if sys.platform != "linux":
         return None
@@ -153,34 +266,43 @@ def get_stacking_handles():
         return None
 
 
-def get_visible_top_intervals(window, all_windows, stacking_handles):
+def build_stacking_index(stacking_handles):
+    # Convert the handle list to a handle -> stack-position mapping, allowing
+    # direct position lookups without a linear search.
+    if stacking_handles is None:
+        return None
+
+    return {
+        handle: index
+        for index, handle in enumerate(stacking_handles)
+    }
+
+
+def get_visible_top_intervals(window, all_windows, stacking_index):
 
     full_interval = (window.left, window.left + window.width)
 
-    if stacking_handles is None:
+    if stacking_index is None:
         return [full_interval]
 
     window_handle = window.getHandle()
 
-    if window_handle not in stacking_handles:
-        return [full_interval]
+    window_index = stacking_index.get(window_handle)
 
-    window_index = stacking_handles.index(window_handle)
+    if window_index is None:
+        return [full_interval]
 
     intervals = [full_interval]
 
     for other in all_windows:
-        if other.getHandle() == window_handle:
-            continue
-
         other_handle = other.getHandle()
 
-        if other_handle not in stacking_handles:
+        if other_handle == window_handle:
             continue
 
-        other_index = stacking_handles.index(other_handle)
+        other_index = stacking_index.get(other_handle)
 
-        if other_index <= window_index:
+        if other_index is None or other_index <= window_index:
             continue
 
         covers_top_line = (
@@ -203,6 +325,19 @@ def get_visible_top_intervals(window, all_windows, stacking_handles):
         intervals = new_intervals
 
     return intervals
+
+
+def compute_all_visible_intervals(windows):
+    # Calculate visible intervals for ALL windows at once, reading the stacking
+    # order only once. Called only when the window list is refreshed, not every frame.
+    stacking_index = build_stacking_index(get_stacking_handles())
+
+    return {
+        window.getHandle(): get_visible_top_intervals(
+            window, windows, stacking_index
+        )
+        for window in windows
+    }
 
 
 def compute_ground_y_and_limit(
@@ -232,7 +367,11 @@ def compute_ground_y_and_limit(
         intervals = (
             visible_intervals.get(window.getHandle(), [])
             if visible_intervals is not None
-            else get_visible_top_intervals(window, windows, get_stacking_handles())
+            else get_visible_top_intervals(
+                window,
+                windows,
+                build_stacking_index(get_stacking_handles())
+            )
         )
 
         for start, end in intervals:
@@ -286,6 +425,26 @@ def get_screen_geometry():
     )
 
 
+def get_work_area_geometry():
+    # Usable screen area. On Windows, excludes the taskbar (wherever it is),
+    # so the "ground" is always above it. The overlay still uses
+    # get_screen_geometry (the full screen) for drawing.
+    screen = QApplication.primaryScreen()
+
+    rect = (
+        screen.availableGeometry()
+        if sys.platform == "win32"
+        else screen.geometry()
+    )
+
+    return (
+        rect.x(),
+        rect.y(),
+        rect.width(),
+        rect.height()
+    )
+
+
 class WindowSnapshot:
     __slots__ = ("left", "top", "width", "height", "handle", "fullscreen")
 
@@ -299,6 +458,66 @@ class WindowSnapshot:
 
     def getHandle(self):
         return self.handle
+
+
+# Windows window classes that are UI elements rather than application windows.
+# Identify them by class instead of title, because titles vary with the system language.
+NOT_REAL_WINDOW_CLASSES = {
+    "MultitaskingViewFrame",         # Alt+Tab / Task View (Windows 10)
+    "XamlExplorerHostIslandWindow",  # Alt+Tab (Windows 11)
+}
+
+GA_ROOT = 2
+DWMWA_CLOAKED = 14
+
+
+def is_cloaked(hwnd):
+    # A window "hidden" by Windows: reported as visible by the API, but not
+    # seen by the user (closed Cortana/Search, suspended UWP apps, or windows
+    # on another virtual desktop).
+    import ctypes
+    from ctypes import wintypes
+
+    cloaked = wintypes.DWORD(0)
+
+    result = ctypes.windll.dwmapi.DwmGetWindowAttribute(
+        wintypes.HWND(hwnd),
+        DWMWA_CLOAKED,
+        ctypes.byref(cloaked),
+        ctypes.sizeof(cloaked)
+    )
+
+    return result == 0 and cloaked.value != 0
+
+
+def is_real_window(window):
+    # Filter out pywinctl results that are not actual windows: internal
+    # controls (buttons, "Ribbon", "Chrome Legacy Window"), cloaked windows,
+    # and the Alt+Tab interface. Windows only; no filtering is needed on Linux.
+    if sys.platform != "win32":
+        return True
+
+    try:
+        import win32gui
+
+        hwnd = window.getHandle()
+
+        # A real top-level window is its own root window.
+        # Child controls have a different root window.
+        if win32gui.GetAncestor(hwnd, GA_ROOT) != hwnd:
+            return False
+
+        if is_cloaked(hwnd):
+            return False
+
+        if win32gui.GetClassName(hwnd) in NOT_REAL_WINDOW_CLASSES:
+            return False
+
+        return True
+    except Exception:
+        # When in doubt, keep the window (previous behavior).
+        return True
+
 
 def get_windows():
     windows = pwc.getAllWindows()
@@ -315,6 +534,12 @@ def get_windows():
         if window.isMinimized or not window.isVisible:
             continue
 
+        if window.width <= 0 or window.height <= 0:
+            continue
+
+        if not is_real_window(window):
+            continue
+
         is_fullscreen = window.width * window.height >= screen_area * 0.95
 
         if is_fullscreen:
@@ -328,16 +553,84 @@ def get_windows():
 
     return valid_windows
 
+
+def apply_ghost_description(exe_path):
+    # Set the file description ("A StickFigure") on the ghost process .exe;
+    # it appears in the Task Manager Details tab.
+    # This must run BEFORE Popen because Windows locks a running .exe.
+    if sys.platform != "win32":
+        return
+
+    result = subprocess.run(
+        [
+            str(RCEDIT_PATH),
+            exe_path,
+            "--set-version-string", "FileDescription", "A StickFigure",
+        ],
+        capture_output=True,
+        text=True,
+    )
+
+# Names reserved by Windows for devices: creating a file with one of these
+# names (even with an extension, such as "con.exe") writes to the device, not disk.
+WINDOWS_RESERVED_NAMES = {
+    "CON", "PRN", "AUX", "NUL",
+    *(f"COM{i}" for i in range(1, 10)),
+    *(f"LPT{i}" for i in range(1, 10)),
+}
+
+
+def cleanup_old_ghost_dirs():
+    # Remove leftovers from previous runs. Windows will not delete files for
+    # active ghost processes (.exe files still running), so they remain harmlessly
+    # in place (ignore_errors).
+    ghosts_root = os.path.join(tempfile.gettempdir(), "polytes_ghosts")
+    shutil.rmtree(ghosts_root, ignore_errors=True)
+
+
 def get_ghost_process_command(name):
+    # Each stickman gets a copy of the executable named after it, in a unique
+    # folder (uuid), so stickmen with the same name do not compete for one file
+    # (Windows locks files that are in use).
+    safe_name = "".join(c for c in name if c.isalnum() or c in " _-").strip() or "Untitled"
+
+    # "con" becomes "conStickFigure", and so on.
+    if safe_name.upper() in WINDOWS_RESERVED_NAMES:
+        safe_name += "StickFigure"
+
+    ghost_dir = os.path.join(tempfile.gettempdir(), "polytes_ghosts", uuid.uuid4().hex)
+    os.makedirs(ghost_dir, exist_ok=True)
+
+    ghost_exe = os.path.join(ghost_dir, f"{safe_name}.exe")
+
     if getattr(sys, 'frozen', False):
-        base_path = sys._MEIPASS
-        ghost_path = os.path.join(base_path, 'stickman_ghost_process.exe')
-        return [ghost_path, name]
-    else:
-        base_path = os.path.dirname(os.path.abspath(__file__))
-        ghost_path = os.path.join(
-            os.path.dirname(base_path),
-            'Simulation',
-            'stickman_ghost_process.py'
-        )
-        return ['python3', ghost_path, name]
+        source = os.path.join(sys._MEIPASS, 'stickman_ghost_process.exe')
+        shutil.copy2(source, ghost_exe)
+        apply_ghost_description(ghost_exe)
+        return [ghost_exe, name, str(os.getpid())], None
+
+    # Development mode: copy the real python.exe (not the venv launcher) and
+    # its required DLLs, then set PYTHONHOME so it can find the standard library.
+    base_prefix = sys.base_prefix
+    shutil.copy2(os.path.join(base_prefix, 'python.exe'), ghost_exe)
+
+    for dll in os.listdir(base_prefix):
+        if dll.lower().endswith('.dll') and (
+            dll.lower().startswith('python3') or dll.lower().startswith('vcruntime')
+        ):
+            shutil.copy2(os.path.join(base_prefix, dll), ghost_dir)
+
+    project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    ghost_script = os.path.join(project_root, 'Simulation', 'stickman_ghost_process.py')
+
+    env = os.environ.copy()
+    env['PYTHONHOME'] = base_prefix
+
+    apply_ghost_description(ghost_exe)
+
+    return [ghost_exe, ghost_script, name, str(os.getpid())], env
+
+
+def load_fonts():
+    for font_file in FONTS_DIR.glob("*.ttf"):
+        QFontDatabase.addApplicationFont(str(font_file))

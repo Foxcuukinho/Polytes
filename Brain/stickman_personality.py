@@ -7,7 +7,7 @@ def generate_base_traits(seed):
     curiosity = rng.randint(0, 100)
     return energy, curiosity
 
-# TODO: Na V2, tranformars os valores de buff em constantes
+# TODO: In V2, turn buff values into constants
 def apply_hollow_head_buff(energy, hollow_head):
     if hollow_head:
         return energy * 1.2

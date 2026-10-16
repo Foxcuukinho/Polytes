@@ -1,3 +1,8 @@
+from pathlib import Path
+
+FONTS_DIR = Path(__file__).resolve().parent.parent / "Fonts"
+RCEDIT_PATH = FONTS_DIR.parent / "Tools" / "rcedit-x64.exe"
+
 FRAME_DURATION_MS = 32
 WINDOW_UPDATE_INTERVAL_FRAMES = 30
 DELTA_TIME = FRAME_DURATION_MS / 1000
@@ -41,3 +46,4 @@ DISTANCE_PER_WALK_CYCLE = 67
 DEFAULT_WALK_SPEED = 170
 
 SCORE_MARGIN = 0.3
+LANDING_RECOVERY_TIME = 3

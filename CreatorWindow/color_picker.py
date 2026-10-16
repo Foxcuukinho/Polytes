@@ -91,16 +91,16 @@ class SaturationValueSquare(QWidget):
 
         rect = QRect(0, 0, self.width(), self.height())
 
-        # Camada base (vertical, independe de x): hue puro no topo, branco embaixo.
-        # É o eixo de saturação: topo = saturação máxima, embaixo = zero (branco).
+        # Base layer (vertical, independent of x): pure hue at the top, white at the bottom.
+        # This is the saturation axis: top = maximum saturation, bottom = zero (white).
         saturation_gradient = QLinearGradient(rect.topLeft(), rect.bottomLeft())
         saturation_gradient.setColorAt(0, QColor.fromHsv(self._hue, 255, 255))
         saturation_gradient.setColorAt(1, QColor(255, 255, 255))
         painter.fillRect(rect, saturation_gradient)
 
-        # Camada multiplicativa (horizontal): preto (esquerda) até branco (direita).
-        # Multiply por preto zera qualquer cor (garante coluna esquerda inteira preta,
-        # não só o canto) — multiply por branco não altera nada (mantém a direita intacta).
+        # Multiplicative layer (horizontal): black on the left to white on the right.
+        # Multiplying by black zeros any color (making the entire left column black,
+        # not just the corner); multiplying by white leaves it unchanged (preserving the right side).
         value_gradient = QLinearGradient(rect.topLeft(), rect.topRight())
         value_gradient.setColorAt(0, QColor(0, 0, 0))
         value_gradient.setColorAt(1, QColor(255, 255, 255))
@@ -112,7 +112,7 @@ class SaturationValueSquare(QWidget):
         marker_x = int((self._val / 255) * self.width())
         marker_y = int((1 - self._sat / 255) * self.height())
 
-        # Crosshair, igual ao Zorin: linha horizontal + vertical cruzando o marcador
+        # Crosshair, as in Zorin: horizontal and vertical lines crossing at the marker
         pen = QPen(QColor(255, 255, 255, 160), 1)
         painter.setPen(pen)
         painter.drawLine(0, marker_y, self.width(), marker_y)
@@ -160,9 +160,9 @@ class ColorPreviewSwatch(QWidget):
 
 
 class RoundedCard(QWidget):
-    # Desenha o fundo arredondado no próprio paintEvent, em vez de confiar
-    # só em QSS (border-radius via QSS com WA_TranslucentBackground falha
-    # no Windows, deixando os cantos brancos/não compositados).
+    # Draw the rounded background in paintEvent itself instead of relying
+    # only on QSS (QSS border-radius with WA_TranslucentBackground fails on
+    # Windows, leaving the corners white or uncomposited).
     def paintEvent(self, event):
         painter = QPainter(self)
         painter.setRenderHint(QPainter.Antialiasing)
@@ -193,7 +193,7 @@ class ColorPickerDialog(QDialog):
         card_layout.setContentsMargins(20, 20, 20, 20)
         card_layout.setSpacing(18)
 
-        # Barra de topo: Cancelar / título / Selecionar
+        # Top bar: Cancel / title / Select
         top_bar = QHBoxLayout()
 
         self.cancel_button = QPushButton("Cancelar")
@@ -240,7 +240,7 @@ class ColorPickerDialog(QDialog):
 
         card_layout.addLayout(top_bar)
 
-        # Linha: preview + hex
+        # Row: preview + hex
         info_row = QHBoxLayout()
         info_row.setSpacing(12)
 
@@ -263,7 +263,7 @@ class ColorPickerDialog(QDialog):
 
         card_layout.addLayout(info_row)
 
-        # Linha: hue slider + quadrado sat/brilho
+        # Row: hue slider + saturation/brightness square
         picker_row = QHBoxLayout()
         picker_row.setSpacing(14)
 

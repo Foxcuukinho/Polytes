@@ -48,8 +48,8 @@ from PyQt5.QtGui import QPainter, QPen, QPainterPath, QColor, QFont, QKeySequenc
 from PyQt5.QtCore import Qt, QPointF, QTimer, QSettings
 
 # ---------------------------------------------------------------------------
-# Mesmas constantes de draw_stickman.py (copiadas, não importadas, pra essa
-# ferramenta não depender do projeto Polytes rodando)
+# Same constants as draw_stickman.py (copied rather than imported so this
+# tool does not depend on the Polytes project running)
 # ---------------------------------------------------------------------------
 
 STROKE = 9
@@ -62,7 +62,7 @@ FOREARM_LENGHT = 23
 UPPER_LEG_LENGHT = 28
 LOWER_LEG_LENGHT = 27
 
-# Valor padrão; agora ajustável ao vivo pelo slider no editor
+# Default value; now adjustable live with the editor slider
 JOINT_ROUNDNESS = 0.35
 
 CANVAS_WIDTH = 366
@@ -143,8 +143,8 @@ def interpolate_frames(start, end, progress):
 
 
 # ---------------------------------------------------------------------------
-# Mesma lógica de desenho de draw_stickman.py (draw_head/draw_torso/draw_arm/
-# draw_leg), só recebendo as juntas já calculadas
+# Same drawing logic as draw_stickman.py (draw_head/draw_torso/draw_arm/
+# draw_leg), but using the already-calculated joints
 # ---------------------------------------------------------------------------
 
 def draw_head(painter, head_top_left):
@@ -160,8 +160,8 @@ def lerp_point(a, b, t):
 
 
 def draw_bent_limb(painter, start, joint, end, roundness):
-    # roundness=1 -> curva do início ao fim (igual antes)
-    # roundness=0 -> duas retas com canto quase reto na junta
+    # roundness=1 -> curve from start to end (as before)
+    # roundness=0 -> two straight lines with an almost sharp corner at the joint
     approach_from_start = lerp_point(joint, start, roundness)
     approach_to_end = lerp_point(joint, end, roundness)
 
@@ -230,8 +230,8 @@ class RigCanvas(QWidget):
         self.setCursor(Qt.OpenHandCursor)
         self.setToolTip("Drag a joint to pose. Drag empty space to move the character.")
 
-        # cada handle sabe: junta_pai, junta_propria (pra origem do drag)
-        # e como escrever de volta no frame
+        # Each handle stores its parent joint, own joint (for the drag origin),
+        # and how to write changes back to the frame
         self.handle_specs = {
             "neck": ("hip", "neck", self.set_torso_angle),
             "elbow_r": ("neck", "elbow_r", lambda f, ang: f.__setitem__("upper_arm_angle_r", ang)),
@@ -1286,7 +1286,6 @@ class RigEditor(QWidget):
             return
         with open(path, "w") as file:
             json.dump(self.frames, file, indent=2)
-        print(f"Saved to {path}")
 
     def copy_python_dictionary(self):
         name, accepted = QInputDialog.getText(
@@ -1318,7 +1317,6 @@ class RigEditor(QWidget):
         self.frames = loaded
         self.current_index = 0
         self.refresh()
-        print(f"Loaded from {path}")
 
 
 if __name__ == "__main__":

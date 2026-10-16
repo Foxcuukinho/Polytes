@@ -1,2 +1,4 @@
 PyQt5
 pywinctl
+python-xlib; sys_platform == "linux"
+setproctitle; sys_platform == "linux"

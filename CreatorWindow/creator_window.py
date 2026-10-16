@@ -15,9 +15,9 @@ TITLE_BAR_HEIGHT = 40
 
 
 def build_rounded_path(rect, radius, top_left, top_right, bottom_left, bottom_right):
-    # QPainterPath com cantos arredondados seletivos - permite, por exemplo,
-    # uma barra de título com só o topo arredondado, e um corpo com só a
-    # base arredondada, encaixando perfeitamente um sobre o outro.
+    # QPainterPath with selectively rounded corners. For example, this allows
+    # a title bar with only its top corners rounded and a body with only its
+    # bottom corners rounded, so the two fit together perfectly.
     x, y, w, h = rect.x(), rect.y(), rect.width(), rect.height()
 
     path = QPainterPath()
@@ -215,7 +215,7 @@ class CreatorWindow(QWidget):
         self.hollow_head_label = QLabel('Hollow Head')
         self.hollow_head_checkbox = ToggleSwitch()
 
-        layout.addWidget(self.preview, 1)  # ocupa o espaço disponível
+        layout.addWidget(self.preview, 1)  # Takes the available space
 
         name_layout = QHBoxLayout()
         name_layout.setContentsMargins(0, 12, 12, 0)
@@ -288,7 +288,7 @@ class CreatorWindow(QWidget):
                 border-radius: 7px;
                 border: 1px solid #B0B0B0;
                 padding: 6px;
-                font-family: 'Segoe UI';
+                font-family: 'Selawik';
             }}
         """)
 
@@ -300,7 +300,7 @@ class CreatorWindow(QWidget):
                 border-radius: 7px;
                 border: 1px solid #B0B0B0;
                 padding: 6px;
-                font-family: 'Segoe UI';
+                font-family: 'Selawik';
             }
 
             QPushButton:hover {
@@ -313,7 +313,7 @@ class CreatorWindow(QWidget):
                 border-radius: 7px;
                 border: 1px solid #B0B0B0;
                 padding: 6px;
-                font-family: 'Segoe UI';
+                font-family: 'Selawik';
             }
 
             QLineEdit:focus {
