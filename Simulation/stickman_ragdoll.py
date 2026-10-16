@@ -14,7 +14,6 @@ from Utils.helpers import (
     get_work_area_geometry,
     compute_ground_y_and_limit,
     rectangle_overlap,
-    measure
 )
 from Body.body_physics import sync_ragpoints_to_fk, solve_body
 
@@ -247,9 +246,6 @@ class StickmanRagdoll:
                 continue
 
             visible_intervals = self.visible_intervals.get(handle, [])
-
-            if not visible_intervals:
-                continue
 
             window_right = window.left + window.width
             window_bottom = window.top + window.height

@@ -173,30 +173,52 @@ def detect_collision_with_ragpoint_and_window(
     left_collision = (
         second_right > first_x and
         second_right < first_right and
-        ragpoint.x > ragpoint.old_x and
-        delta_x > delta_y
+        ragpoint.x > ragpoint.old_x
     )
 
     right_collision = (
         second_x < first_right and
         second_x > first_x and
-        ragpoint.x < ragpoint.old_x and
-        delta_x > delta_y
+        ragpoint.x < ragpoint.old_x
     )
 
     top_collision = (
         second_bottom > first_y and
         second_bottom < first_bottom and
-        ragpoint.y > ragpoint.old_y and
-        delta_y > delta_x
+        ragpoint.y > ragpoint.old_y
     )
 
     bottom_collision = (
         second_y < first_bottom and
         second_y > first_y and
-        ragpoint.y < ragpoint.old_y and
-        delta_y > delta_x
+        ragpoint.y < ragpoint.old_y
     )
+
+    horizontal_collision = left_collision or right_collision
+    vertical_collision = top_collision or bottom_collision
+
+    if horizontal_collision and vertical_collision:
+        horizontal_penetration = min(
+            depth for depth in (
+                second_right - first_x if left_collision else None,
+                first_right - second_x if right_collision else None
+            )
+            if depth is not None
+        )
+        vertical_penetration = min(
+            depth for depth in (
+                second_bottom - first_y if top_collision else None,
+                first_bottom - second_y if bottom_collision else None
+            )
+            if depth is not None
+        )
+
+        if horizontal_penetration <= vertical_penetration:
+            top_collision = False
+            bottom_collision = False
+        else:
+            left_collision = False
+            right_collision = False
 
     return (
         True,
@@ -588,6 +610,7 @@ def cleanup_old_ghost_dirs():
     shutil.rmtree(ghosts_root, ignore_errors=True)
 
 
+
 def get_ghost_process_command(name):
     # Each stickman gets a copy of the executable named after it, in a unique
     # folder (uuid), so stickmen with the same name do not compete for one file
@@ -601,6 +624,22 @@ def get_ghost_process_command(name):
     ghost_dir = os.path.join(tempfile.gettempdir(), "polytes_ghosts", uuid.uuid4().hex)
     os.makedirs(ghost_dir, exist_ok=True)
 
+    project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    ghost_script = os.path.join(
+        project_root, 'Simulation', 'stickman_ghost_process.py'
+    )
+
+    # Linux development mode: use the current Python interpreter directly.
+    if sys.platform.startswith('linux') and not getattr(sys, 'frozen', False):
+        env = os.environ.copy()
+        env['PYTHONPATH'] = (
+            project_root
+            + os.pathsep
+            + env.get('PYTHONPATH', '')
+        )
+
+        return [sys.executable, ghost_script, name, str(os.getpid())], env
+
     ghost_exe = os.path.join(ghost_dir, f"{safe_name}.exe")
 
     if getattr(sys, 'frozen', False):
@@ -609,19 +648,17 @@ def get_ghost_process_command(name):
         apply_ghost_description(ghost_exe)
         return [ghost_exe, name, str(os.getpid())], None
 
-    # Development mode: copy the real python.exe (not the venv launcher) and
-    # its required DLLs, then set PYTHONHOME so it can find the standard library.
+    # Development mode on Windows: copy the real python.exe (not the venv
+    # launcher) and its required DLLs, then set PYTHONHOME.
     base_prefix = sys.base_prefix
     shutil.copy2(os.path.join(base_prefix, 'python.exe'), ghost_exe)
 
     for dll in os.listdir(base_prefix):
         if dll.lower().endswith('.dll') and (
-            dll.lower().startswith('python3') or dll.lower().startswith('vcruntime')
+            dll.lower().startswith('python3')
+            or dll.lower().startswith('vcruntime')
         ):
             shutil.copy2(os.path.join(base_prefix, dll), ghost_dir)
-
-    project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-    ghost_script = os.path.join(project_root, 'Simulation', 'stickman_ghost_process.py')
 
     env = os.environ.copy()
     env['PYTHONHOME'] = base_prefix
@@ -629,6 +666,7 @@ def get_ghost_process_command(name):
     apply_ghost_description(ghost_exe)
 
     return [ghost_exe, ghost_script, name, str(os.getpid())], env
+
 
 
 def load_fonts():
