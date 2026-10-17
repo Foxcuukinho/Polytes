@@ -1,5 +1,5 @@
-# -*- mode: python ; coding: utf-8 -*-
 
+# -*- mode: python ; coding: utf-8 -*-
 
 a = Analysis(
     ['Simulation/stickman_ghost_process.py'],
@@ -14,6 +14,7 @@ a = Analysis(
     noarchive=False,
     optimize=0,
 )
+
 pyz = PYZ(a.pure)
 
 exe = EXE(
@@ -23,13 +24,14 @@ exe = EXE(
     a.datas,
     [],
     name='stickman_ghost_process',
+    icon='Assets/polytes.ico',
     debug=False,
     bootloader_ignore_signals=False,
     strip=False,
     upx=True,
     upx_exclude=[],
     runtime_tmpdir=None,
-    console=True,
+    console=False,
     disable_windowed_traceback=False,
     argv_emulation=False,
     target_arch=None,

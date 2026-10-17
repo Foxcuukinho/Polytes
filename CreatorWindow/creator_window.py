@@ -205,7 +205,7 @@ class CreatorWindow(QWidget):
         self.manager = manager
         self.selected_color = QColor("#8ABBD8")
 
-        self.setWindowTitle("Comic Relief")
+        self.setWindowTitle("Stickman Creator")
         self.setWindowFlags(Qt.FramelessWindowHint | Qt.Window)
         self.setAttribute(Qt.WA_TranslucentBackground)
         self.setMinimumSize(265, 440)
@@ -218,7 +218,7 @@ class CreatorWindow(QWidget):
         outer_layout.setContentsMargins(0, 0, 0, 0)
         outer_layout.setSpacing(0)
 
-        self.title_bar = TitleBar("Comic Relief")
+        self.title_bar = TitleBar("Stickman Creator")
         outer_layout.addWidget(self.title_bar)
 
         self.body = BodyContainer()

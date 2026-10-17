@@ -1,7 +1,14 @@
-from pathlib import Path
 
-FONTS_DIR = Path(__file__).resolve().parent.parent / "Fonts"
-RCEDIT_PATH = FONTS_DIR.parent / "Tools" / "rcedit-x64.exe"
+from pathlib import Path
+import sys
+
+if getattr(sys, 'frozen', False):
+    FONTS_DIR = Path(sys._MEIPASS) / "Fonts"
+    RCEDIT_PATH = Path(sys._MEIPASS) / "Tools" / "rcedit-x64.exe"
+else:
+    FONTS_DIR = Path(__file__).resolve().parent.parent / "Fonts"
+    RCEDIT_PATH = FONTS_DIR.parent / "Tools" / "rcedit-x64.exe"
+
 
 FRAME_DURATION_MS = 32
 WINDOW_UPDATE_INTERVAL_FRAMES = 30
@@ -13,7 +20,7 @@ RAGDOLL_DAMPING = 0.995
 RAGDOLL_CENTER_DAMPING_X = 0.90
 RAGDOLL_CENTER_DAMPING_Y = 0.90
 RAGDOLL_SPIN_FACTOR = 0.04
-RAGDOLL_SOLVER_ITERATIONS = 20 
+RAGDOLL_SOLVER_ITERATIONS = 20
 RAGDOLL_STIFFNESS = 0.85
 RAGDOLL_BOUNCE_FACTOR = 0.7
 

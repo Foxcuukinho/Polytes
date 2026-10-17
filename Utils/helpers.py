@@ -611,49 +611,106 @@ def cleanup_old_ghost_dirs():
 
 
 
+
 def get_ghost_process_command(name):
     project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-    ghost_script = os.path.join(project_root, 'Simulation', 'stickman_ghost_process.py')
+    ghost_script = os.path.join(
+        project_root,
+        'Simulation',
+        'stickman_ghost_process.py',
+    )
     frozen = getattr(sys, 'frozen', False)
 
     # Linux: setproctitle names the process, so no copy/rename/rcedit needed.
     if sys.platform.startswith('linux'):
         if frozen:
-            ghost = os.path.join(sys._MEIPASS, 'stickman_ghost_process')
+            ghost = os.path.join(
+                sys._MEIPASS,
+                'stickman_ghost_process',
+            )
             return [ghost, name, str(os.getpid())], None
 
         env = os.environ.copy()
-        env['PYTHONPATH'] = project_root + os.pathsep + env.get('PYTHONPATH', '')
+        env['PYTHONPATH'] = (
+            project_root
+            + os.pathsep
+            + env.get('PYTHONPATH', '')
+        )
         return [sys.executable, ghost_script, name, str(os.getpid())], env
 
     # Windows: each stickman gets its own exe copy named after it.
-    safe_name = "".join(c for c in name if c.isalnum() or c in " _-").strip() or "Untitled"
+    safe_name = "".join(
+        c for c in name if c.isalnum() or c in " _-"
+    ).strip() or "Untitled"
 
     if safe_name.upper() in WINDOWS_RESERVED_NAMES:
         safe_name += "StickFigure"
 
-    ghost_dir = os.path.join(tempfile.gettempdir(), "polytes_ghosts", uuid.uuid4().hex)
+    ghost_dir = os.path.join(
+        tempfile.gettempdir(),
+        "polytes_ghosts",
+        uuid.uuid4().hex,
+    )
     os.makedirs(ghost_dir, exist_ok=True)
+
     ghost_exe = os.path.join(ghost_dir, f"{safe_name}.exe")
 
     if frozen:
-        source = os.path.join(sys._MEIPASS, 'stickman_ghost_process.exe')
+        executable_dir = os.path.dirname(sys.executable)
+
+        candidates = [
+            os.path.abspath(
+                os.path.join(
+                    executable_dir,
+                    '..',
+                    'stickman_ghost_process.exe',
+                )
+            ),
+            os.path.join(
+                executable_dir,
+                'stickman_ghost_process.exe',
+            ),
+            os.path.join(
+                sys._MEIPASS,
+                'stickman_ghost_process.exe',
+            ),
+        ]
+
+        source = next(
+            (path for path in candidates if os.path.isfile(path)),
+            None,
+        )
+
+        if source is None:
+            raise FileNotFoundError(
+                "Could not find stickman_ghost_process.exe. "
+                f"Checked: {candidates}"
+            )
+
         shutil.copy2(source, ghost_exe)
-        apply_ghost_description(ghost_exe)
         return [ghost_exe, name, str(os.getpid())], None
 
+    # Running from Python: copy the interpreter and required DLLs.
     base_prefix = sys.base_prefix
-    shutil.copy2(os.path.join(base_prefix, 'python.exe'), ghost_exe)
+
+    shutil.copy2(
+        os.path.join(base_prefix, 'python.exe'),
+        ghost_exe,
+    )
 
     for dll in os.listdir(base_prefix):
         if dll.lower().endswith('.dll') and (
             dll.lower().startswith('python3')
             or dll.lower().startswith('vcruntime')
         ):
-            shutil.copy2(os.path.join(base_prefix, dll), ghost_dir)
+            shutil.copy2(
+                os.path.join(base_prefix, dll),
+                ghost_dir,
+            )
 
     env = os.environ.copy()
     env['PYTHONHOME'] = base_prefix
+
     apply_ghost_description(ghost_exe)
 
     return [ghost_exe, ghost_script, name, str(os.getpid())], env
