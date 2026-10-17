@@ -6,10 +6,10 @@
 
 ![Python](https://img.shields.io/badge/Python-3-3776AB?style=flat&logo=python&logoColor=white)
 ![PyQt5](https://img.shields.io/badge/PyQt5-Desktop-41CD52?style=flat&logo=qt&logoColor=white)
-![Status](https://img.shields.io/badge/status-in%20development-yellow?style=flat)
+![Status](https://img.shields.io/badge/status-released-brightgreen?style=flat)
 ![License](https://img.shields.io/badge/license-GPLv3-blue?style=flat)
 
-[**itch.io page**](https://foxcuukinho.itch.io/polytes) · [**Support on Patreon**](https://www.patreon.com/c/Polytes)
+[**GitHub Release**](https://github.com/Foxcuukinho/Polytes/releases/tag/v1.0.0-alpha) · [**itch.io page**](https://foxcuukinho.itch.io/polytes) · [**Support on Patreon**](https://www.patreon.com/c/Polytes)
 
 </div>
 
@@ -51,13 +51,26 @@ The goal of V1 is not just to "prove the concept". It is to already deliver the 
 
 ## Status
 
-> 🚧 **Under active development.** The code here changes often and there is no official release yet. This is **V1**: the brain (Utility AI) and the animation are intentionally still very simple. Don't expect a stickman at the level of *Animator vs. Animation*; the movement is procedural and still has rough edges. More behaviors and polish are on the way.
+> **Polytes v1.0.0-alpha has been released!** The first version is available for Windows and Linux.
 
-- All of V1's core systems are implemented, but **no build has been published yet** (no `.exe`, no AppImage, no `.deb`).
-- A compiled build for **Windows** and **Linux** is planned for [itch.io](https://foxcuukinho.itch.io/polytes), so you won't need to install Python or dependencies manually. The page exists, but has no downloads yet.
-- Until then, running from source with `python main.py` is the only way to use it. This repository is the project's source code.
+This is an early alpha release. The brain (Utility AI) and animations are intentionally still very simple. Don't expect a stickman at the level of *Animator vs. Animation*; the movement is procedural and still has rough edges. More behaviors and polish may come in future updates.
 
-> ⚠️ **Build warning (September 2026):** the commits from September 6 are broken for building. The compiled Windows version crashes when creating a stickman. Some planned polish also missed that batch of commits.
+- **Windows:** Download `Polytes-Windows.zip` from the [v1.0.0-alpha release page](https://github.com/Foxcuukinho/Polytes/releases/tag/v1.0.0-alpha). The ZIP contains `Polytes.exe` and `stickman_ghost_process.exe`.
+- **Linux (.deb):** Download `Polytes-Linux.deb` from the [release page](https://github.com/Foxcuukinho/Polytes/releases/tag/v1.0.0-alpha).
+- **Linux (AppImage):** Download `Polytes-Linux.AppImage` from the [release page](https://github.com/Foxcuukinho/Polytes/releases/tag/v1.0.0-alpha).
+
+### Compatibility and testing
+
+Polytes has only been tested on a limited number of devices and system configurations:
+
+- **Linux:** Zorin OS with Zorin Desktop (Zorin Shell), running X11.
+- **Windows:** Windows 10.
+
+Because testing has been limited, bugs or compatibility issues may occur on other devices, Linux distributions, desktop environments, display servers (such as Wayland), or Windows versions.
+
+If you encounter any bugs or compatibility issues, please report them on [GitHub Issues](https://github.com/Foxcuukinho/Polytes/issues).
+
+The itch.io page is still being prepared, so the current builds are available on GitHub for now.
 
 ---
 
@@ -89,6 +102,8 @@ This opens the **Stickman creator** window: pick a name, a color, and whether th
 - Once released, it goes back to walking/standing still on its own, according to its personality
 - To delete a stickman, end its corresponding process in your system's task manager
 
+Packaged builds are also available from the [v1.0.0-alpha release](https://github.com/Foxcuukinho/Polytes/releases/tag/v1.0.0-alpha), so you don't need to install Python or dependencies manually to use them.
+
 ---
 
 ## Support the project
@@ -100,7 +115,6 @@ Want to support Polytes or share your ideas? Check out the project's Patreon: **
 ## How it works
 
 In simple terms, each stickman goes through these steps:
-
 1. **Personality:** the name you type is turned into a number (a "seed"), which generates two traits: `energy` and `curiosity`. The same name always gives the same personality. Color and head type add small bonuses.
 2. **Needs:** while it lives, its `stamina` and `boredom` change over time. Walking tires it out and relieves boredom, standing still rests it and makes it bored.
 3. **Decision:** every few seconds, its brain compares its traits and needs and decides: walk somewhere, or stand still.
@@ -109,7 +123,6 @@ In simple terms, each stickman goes through these steps:
 6. **Drawing:** everything is drawn in a transparent window over your screen, so the stickman looks like it lives right on your desktop.
 
 Here is the same flow in more technical detail:
-
 ```
 Stickman creator (name, color, hollow/filled head)
               ↓
@@ -127,10 +140,9 @@ Name → deterministic seed (SHA-256) → personality traits
               ↓
         draw_stickman (drawing on the transparent overlay window)
 ```
-
 Each stickman is drawn in a transparent, borderless `PyQt5` window covering the whole screen, with a mask (`QRegion`) recalculated every frame. Only the stickman's "silhouette" is clickable/visible; the rest of the window is invisible.
 
-On Linux, the window also receives EWMH hints via X11 (`_NET_WM_STATE_ABOVE`, `SKIP_TASKBAR`, `SKIP_PAGER`, and window type `DOCK`), keeping the stickman always visible on top of other windows, hidden from Alt-Tab/taskbar, and surviving "show desktop" (Win+D / Super+D). Tested on GNOME and KDE.
+On Linux, the window also receives EWMH hints via X11 (`_NET_WM_STATE_ABOVE`, `SKIP_TASKBAR`, `SKIP_PAGER`, and window type `DOCK`), keeping the stickman always visible on top of other windows, hidden from Alt-Tab/taskbar, and surviving "show desktop" (Win+D / Super+D). Tested on Zorin OS with Zorin Desktop (Zorin Shell) using X11.
 
 ---
 
@@ -198,7 +210,6 @@ The brain only decides every `STICKMAN_DEFAULT_DECIDE_COOLDOWN = 3` seconds (a t
 ```
 score_walk = Σ (factor / 100)         for factor in [energy, curiosity, stamina, boredom]
 score_idle = Σ (1 - factor / 100)     for the same factors
-
 WALK  if score_walk > score_idle + SCORE_MARGIN (0.3)   and the stickman is not being dragged
 IDLE  if score_idle > score_walk
 ```
@@ -207,7 +218,9 @@ When it switches to `WALK`, it picks a random `target_x` at least 200 px away fr
 
 ### Movement and ground
 
-Walking moves `x` at `DEFAULT_WALK_SPEED = 170` px/s toward `target_x`. Gravity is a simple integration (`GRAVITY_ACCELERATION = 1098` px/s²): `velocity_y += g * dt`, then `y += velocity_y * dt`. The ground is the **lowest candidate** among the real screen bottom and the visible top edges of system windows that overlap the stickman horizontally and sit below its feet (with `GROUND_SNAP_TOLERANCE` to avoid losing a window by a few pixels). When the body leaves the ground area completely, the stickman switches to the physical ragdoll state (`flying`).
+Walking moves `x` at `DEFAULT_WALK_SPEED = 170` px/s toward `target_x`. Gravity is a simple integration (`GRAVITY_ACCELERATION = 1098` px/s²): `velocity_y += g * dt`, then `y += velocity_y * dt`. The ground is the **lowest candidate** among the real screen bottom and the visible top edges of system windows that overlap the stickman horizontally and sit below its feet (with `GROUND_SNAP_TOLERANCE` to avoid losing a window by a few pixels).
+
+When the body leaves the ground area completely, the stickman switches to the physical ragdoll state (`flying`).
 
 ### Skeleton and animation
 
@@ -244,7 +257,9 @@ Window geometry comes from `pywinctl`. Reading properties from live window objec
 
 ### Overlay and mouse hit-testing
 
-Each stickman lives in a borderless, transparent, always-on-top window covering the whole screen, created once and never resized (resizing every frame caused a flicker in Qt). Only `setMask` changes per frame: the mask is built from small `QRegion` squares placed along every bone (5 per bone, radius 15 px) plus a larger one around the head, so the rest of the screen stays click-through. When the stickman faces right, the drawing is mirrored horizontally around its own position, and the mask uses the same mirroring.
+Each stickman lives in a borderless, transparent, always-on-top window covering the whole screen, created once and never resized (resizing every frame caused a flicker in Qt). Only `setMask` changes per frame: the mask is built from small `QRegion` squares placed along every bone (5 per bone, radius 15 px) plus a larger one around the head, so the rest of the screen stays click-through.
+
+When the stickman faces right, the drawing is mirrored horizontally around its own position, and the mask uses the same mirroring.
 
 ### Ghost process
 
@@ -266,7 +281,6 @@ Each stickman has a tiny separate OS process whose only job is to rename itself 
 ---
 
 ## Project structure
-
 ```
 Polytes/
 ├── main.py                      # Entry point
@@ -312,7 +326,6 @@ Polytes/
 ---
 
 ## V1 scope
-
 **In scope:**
 - World physics (gravity, ground, screen edges, system window collision)
 - Procedural personality from the name
