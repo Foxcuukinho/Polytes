@@ -46,8 +46,14 @@ def wait_for_parent_windows(parent_pid):
 
 
 def wait_for_parent_linux(parent_pid):
-    # When the parent exits, this process's parent changes (to init).
-    while os.getppid() == parent_pid:
+    # Signal 0 does not kill anything: it only checks if the PID exists.
+    while True:
+        try:
+            os.kill(parent_pid, 0)
+        except ProcessLookupError:
+            return
+        except PermissionError:
+            pass  # The process exists, we just cannot signal it.
         time.sleep(1)
 
 

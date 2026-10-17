@@ -612,44 +612,36 @@ def cleanup_old_ghost_dirs():
 
 
 def get_ghost_process_command(name):
-    # Each stickman gets a copy of the executable named after it, in a unique
-    # folder (uuid), so stickmen with the same name do not compete for one file
-    # (Windows locks files that are in use).
+    project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    ghost_script = os.path.join(project_root, 'Simulation', 'stickman_ghost_process.py')
+    frozen = getattr(sys, 'frozen', False)
+
+    # Linux: setproctitle names the process, so no copy/rename/rcedit needed.
+    if sys.platform.startswith('linux'):
+        if frozen:
+            ghost = os.path.join(sys._MEIPASS, 'stickman_ghost_process')
+            return [ghost, name, str(os.getpid())], None
+
+        env = os.environ.copy()
+        env['PYTHONPATH'] = project_root + os.pathsep + env.get('PYTHONPATH', '')
+        return [sys.executable, ghost_script, name, str(os.getpid())], env
+
+    # Windows: each stickman gets its own exe copy named after it.
     safe_name = "".join(c for c in name if c.isalnum() or c in " _-").strip() or "Untitled"
 
-    # "con" becomes "conStickFigure", and so on.
     if safe_name.upper() in WINDOWS_RESERVED_NAMES:
         safe_name += "StickFigure"
 
     ghost_dir = os.path.join(tempfile.gettempdir(), "polytes_ghosts", uuid.uuid4().hex)
     os.makedirs(ghost_dir, exist_ok=True)
-
-    project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-    ghost_script = os.path.join(
-        project_root, 'Simulation', 'stickman_ghost_process.py'
-    )
-
-    # Linux development mode: use the current Python interpreter directly.
-    if sys.platform.startswith('linux') and not getattr(sys, 'frozen', False):
-        env = os.environ.copy()
-        env['PYTHONPATH'] = (
-            project_root
-            + os.pathsep
-            + env.get('PYTHONPATH', '')
-        )
-
-        return [sys.executable, ghost_script, name, str(os.getpid())], env
-
     ghost_exe = os.path.join(ghost_dir, f"{safe_name}.exe")
 
-    if getattr(sys, 'frozen', False):
+    if frozen:
         source = os.path.join(sys._MEIPASS, 'stickman_ghost_process.exe')
         shutil.copy2(source, ghost_exe)
         apply_ghost_description(ghost_exe)
         return [ghost_exe, name, str(os.getpid())], None
 
-    # Development mode on Windows: copy the real python.exe (not the venv
-    # launcher) and its required DLLs, then set PYTHONHOME.
     base_prefix = sys.base_prefix
     shutil.copy2(os.path.join(base_prefix, 'python.exe'), ghost_exe)
 
@@ -662,11 +654,9 @@ def get_ghost_process_command(name):
 
     env = os.environ.copy()
     env['PYTHONHOME'] = base_prefix
-
     apply_ghost_description(ghost_exe)
 
     return [ghost_exe, ghost_script, name, str(os.getpid())], env
-
 
 
 def load_fonts():

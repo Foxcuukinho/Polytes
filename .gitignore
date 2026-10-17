@@ -23,7 +23,13 @@ build/
 dist/
 deb_build/
 Polytes.AppDir/
+/AppDir/
+/polytes_1.0.0~alpha_amd64/
 
 # Pacotes gerados
 *.deb
 *.AppImage
+/Polytes-x86_64.AppImage~
+/appimagetool
+/dist
+/polytes_1.0.0.0~alpha

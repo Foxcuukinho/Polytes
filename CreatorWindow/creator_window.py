@@ -1,6 +1,18 @@
-from PyQt5.QtWidgets import QWidget, QPushButton, QLineEdit, QVBoxLayout, QHBoxLayout, QLabel
-from PyQt5.QtGui import QColor, QPainter, QPainterPath, QPen
+
+import os
+import sys
+
+from PyQt5.QtWidgets import (
+    QWidget,
+    QPushButton,
+    QLineEdit,
+    QVBoxLayout,
+    QHBoxLayout,
+    QLabel,
+)
+from PyQt5.QtGui import QColor, QPainter, QPainterPath, QPen, QIcon
 from PyQt5.QtCore import Qt
+
 from CreatorWindow.preview_widget import StickmanPreview
 from Utils.constants import STICKMAN_WIDTH, STICKMAN_HEIGHT
 from CreatorWindow.widgets import ToggleSwitch
@@ -150,7 +162,10 @@ class TitleBar(QWidget):
 
     def mousePressEvent(self, event):
         if event.button() == Qt.LeftButton:
-            self._drag_offset = event.globalPos() - self.window().frameGeometry().topLeft()
+            self._drag_offset = (
+                event.globalPos()
+                - self.window().frameGeometry().topLeft()
+            )
 
     def mouseMoveEvent(self, event):
         if self._drag_offset is not None and event.buttons() & Qt.LeftButton:
@@ -178,6 +193,14 @@ class BodyContainer(QWidget):
 class CreatorWindow(QWidget):
     def __init__(self, manager):
         super().__init__()
+
+        icon_base_path = getattr(
+            sys,
+            "_MEIPASS",
+            os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        )
+        icon_path = os.path.join(icon_base_path, "Assets", "polytes.png")
+        self.setWindowIcon(QIcon(icon_path))
 
         self.manager = manager
         self.selected_color = QColor("#8ABBD8")
@@ -207,17 +230,17 @@ class CreatorWindow(QWidget):
 
         self.preview = StickmanPreview(self.selected_color, False)
 
-        self.name_label = QLabel('Name:')
+        self.name_label = QLabel("Name:")
         self.name_input = QLineEdit()
         self.name_input.setPlaceholderText("Untitled")
 
         self.color_button = QPushButton("Color")
         self.create_stickman_button = QPushButton("Create Stickman")
 
-        self.hollow_head_label = QLabel('Hollow Head')
+        self.hollow_head_label = QLabel("Hollow Head")
         self.hollow_head_checkbox = ToggleSwitch()
 
-        layout.addWidget(self.preview, 1)  # Takes the available space
+        layout.addWidget(self.preview, 1)
 
         name_layout = QHBoxLayout()
         name_layout.setContentsMargins(0, 12, 12, 0)
@@ -245,7 +268,9 @@ class CreatorWindow(QWidget):
 
         self.color_button.clicked.connect(self.open_selector)
         self.create_stickman_button.clicked.connect(self.spawn_stickman)
-        self.hollow_head_checkbox.toggled.connect(self.preview.set_hollow_head)
+        self.hollow_head_checkbox.toggled.connect(
+            self.preview.set_hollow_head
+        )
 
         self.title_bar.minimize_button.clicked.connect(self.showMinimized)
         self.title_bar.maximize_button.clicked.connect(self.toggle_maximize)
@@ -265,12 +290,16 @@ class CreatorWindow(QWidget):
     def spawn_stickman(self):
         name = self.name_input.text()
 
-        if name == '':
-            name = 'Untitled'
+        if name == "":
+            name = "Untitled"
 
         hollow_head = self.hollow_head_checkbox.isChecked()
 
-        self.manager.create_stickman(name, self.selected_color, hollow_head)
+        self.manager.create_stickman(
+            name,
+            self.selected_color,
+            hollow_head
+        )
 
     def open_selector(self):
         dialog = ColorPickerDialog(self.selected_color, parent=self)
