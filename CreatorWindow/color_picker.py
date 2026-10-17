@@ -196,7 +196,7 @@ class ColorPickerDialog(QDialog):
         # Top bar: Cancel / title / Select
         top_bar = QHBoxLayout()
 
-        self.cancel_button = QPushButton("Cancelar")
+        self.cancel_button = QPushButton("Cancel")
         self.title_label = QLabel("Select Color")
         self.title_label.setAlignment(Qt.AlignCenter)
         self.select_button = QPushButton("Select")
@@ -208,7 +208,7 @@ class ColorPickerDialog(QDialog):
                 border-radius: 10px;
                 border: none;
                 padding: 8px 14px;
-                font-family: 'Comic Relief', Arial, sans-serif;
+                font-family: 'Selawik';
                 font-size: 13px;
             }}
             QPushButton:hover {{
@@ -223,7 +223,7 @@ class ColorPickerDialog(QDialog):
                 border-radius: 10px;
                 border: none;
                 padding: 8px 14px;
-                font-family: 'Comic Relief', Arial, sans-serif;
+                font-family: 'Selawik';
                 font-size: 13px;
                 font-weight: 600;
             }}
@@ -232,7 +232,7 @@ class ColorPickerDialog(QDialog):
             }}
         """)
 
-        self.title_label.setStyleSheet(f"color: {MUTED_TEXT}; font-family: 'Comic Relief', Arial, sans-serif; font-size: 13px; font-weight: 500;")
+        self.title_label.setStyleSheet(f"color: {MUTED_TEXT}; font-family: 'Selawik'; font-size: 13px; font-weight: 500;")
 
         top_bar.addWidget(self.cancel_button)
         top_bar.addWidget(self.title_label, 1)
@@ -253,7 +253,7 @@ class ColorPickerDialog(QDialog):
                 border-radius: 10px;
                 border: none;
                 padding: 10px 14px;
-                font-family: 'Segoe UI', Arial, sans-serif;
+                font-family: 'Selawik';
                 font-size: 14px;
             }}
         """)

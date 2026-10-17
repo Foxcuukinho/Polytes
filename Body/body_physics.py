@@ -1,6 +1,6 @@
 import math
 from Animation.rig import RIG
-from Utils.constants import HIP_HEIGHT_FROM_TOP, STROKE, DELTA_TIME, RAGDOLL_ACCELERATION, RAGDOLL_DAMPING, RAGDOLL_STIFFNES, RAGPOINT_RADIUS
+from Utils.constants import HIP_HEIGHT_FROM_TOP, STROKE, DELTA_TIME, RAGDOLL_ACCELERATION, RAGDOLL_DAMPING, RAGDOLL_STIFFNESS, RAGPOINT_RADIUS
 from Utils.helpers import polar_point
 
 
@@ -107,8 +107,8 @@ def solve_bone(origin, end, rest, grab):
 
     if grab is None:
 
-        adjust_x = (distance_error / 2) * direction_x * RAGDOLL_STIFFNES
-        adjust_y = (distance_error / 2) * direction_y * RAGDOLL_STIFFNES
+        adjust_x = (distance_error / 2) * direction_x * RAGDOLL_STIFFNESS
+        adjust_y = (distance_error / 2) * direction_y * RAGDOLL_STIFFNESS
 
         origin.x -= adjust_x
         origin.y -= adjust_y
@@ -118,22 +118,22 @@ def solve_bone(origin, end, rest, grab):
 
     elif grab == "origin":
 
-        adjust_x = distance_error * direction_x * RAGDOLL_STIFFNES
-        adjust_y = distance_error * direction_y * RAGDOLL_STIFFNES
+        adjust_x = distance_error * direction_x * RAGDOLL_STIFFNESS
+        adjust_y = distance_error * direction_y * RAGDOLL_STIFFNESS
 
         end.x += adjust_x
         end.y += adjust_y
 
     elif grab == "end":
 
-        adjust_x = distance_error * direction_x * RAGDOLL_STIFFNES
-        adjust_y = distance_error * direction_y * RAGDOLL_STIFFNES
+        adjust_x = distance_error * direction_x * RAGDOLL_STIFFNESS
+        adjust_y = distance_error * direction_y * RAGDOLL_STIFFNESS
 
 
         origin.x -= adjust_x
         origin.y -= adjust_y
 
-def create_ragpoints(joints, stickman_x, stickman_y):
+def create_ragpoints(joints):
 
     ragpoints = {}
 
@@ -233,7 +233,5 @@ def sync_ragpoints_to_fk(stickman):
     stickman.joints = calculate_joints(
         stickman.current_frame, stickman, stickman.head_radius
     )
-    stickman.ragpoints = create_ragpoints(
-        stickman.joints, stickman.x, stickman.y
-    )
+    stickman.ragpoints = create_ragpoints(stickman.joints)
             

@@ -1,4 +1,7 @@
 import subprocess
+import logging
+import sys
+from PyQt5.QtWidgets import QApplication
 from Simulation.stickman import Stickman
 from Simulation.stickman_overlay import StickmanOverlay
 from Simulation.stickman_physics import StickmanPhysics
@@ -24,22 +27,45 @@ class StickmanManager:
 
     def create_stickman(self, name, color, hollow_head):
 
+        name = "".join(character for character in str(name) if character.isprintable()).strip()
+        name = name or "Untitled"
+
+        existing_names = {overlay.stickman.name.casefold() for overlay in self.stickmans_overlays}
+        base_name = name
+        suffix = 2
+        while name.casefold() in existing_names:
+            name = f"{base_name} ({suffix})"
+            suffix += 1
+
         stickman = Stickman(name, color, hollow_head)
 
-        command, env = get_ghost_process_command(name)
-        stickman.ghost_process = subprocess.Popen(command, env=env)
-
         overlay = StickmanOverlay(stickman)
+        if sys.platform.startswith("linux") and QApplication.platformName() == "xcb":
+            overlay.apply_x11_hints()
 
-        self.stickmans_overlays.append(overlay)
-        overlay.apply_x11_hints()
-        overlay.show()
+        process = None
+        try:
+            command, env = get_ghost_process_command(name)
+            process = subprocess.Popen(command, env=env)
+            stickman.ghost_process = process
+            self.stickmans_overlays.append(overlay)
+            overlay.show()
+        except BaseException:
+            if process is not None and process.poll() is None:
+                process.terminate()
+                try:
+                    process.wait(timeout=1)
+                except subprocess.TimeoutExpired:
+                    process.kill()
+                    process.wait()
+            raise
 
     def delete_stickman(self, stickman):
 
         for overlay in self.stickmans_overlays.copy():
             if overlay.stickman == stickman:
                 overlay.close()
+                overlay.deleteLater()
                 self.stickmans_overlays.remove(overlay)
 
     def update_stickman(self):
@@ -48,10 +74,13 @@ class StickmanManager:
 
         for overlay in self.stickmans_overlays:
             stickman = overlay.stickman
-            self.update_brain(stickman)
-            self.update_physics(stickman)
-            self.update_animation(stickman)
-            self.update_overlay(overlay)
+            try:
+                self.update_brain(stickman)
+                self.update_physics(stickman)
+                self.update_animation(stickman)
+                self.update_overlay(overlay)
+            except Exception:
+                logging.exception("Failed to update stickman %r", stickman.name)
 
     def update_ghost_process(self):
         for overlay in self.stickmans_overlays.copy():

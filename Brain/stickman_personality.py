@@ -17,6 +17,9 @@ def apply_hollow_head_buff(energy, hollow_head):
 def apply_color_buff(energy, curiosity, color):
     hue, _, _, _ = color.getHsv()
 
+    if hue == -1:
+        return energy, curiosity
+
     if hue >= 120 and hue <= 240:
         curiosity = curiosity * 1.2
 

@@ -27,7 +27,7 @@ class StickmanOverlay(QWidget):
         self.center_on_screen()
 
         self.stickman.joints = calculate_joints(self.stickman.current_frame, self.stickman, self.stickman.head_radius)
-        self.stickman.ragpoints = create_ragpoints(self.stickman.joints, self.stickman.x, self.stickman.y)
+        self.stickman.ragpoints = create_ragpoints(self.stickman.joints)
 
         self.drag_velocity_x = 0
         self.mouse_old_x = 0
@@ -69,6 +69,9 @@ class StickmanOverlay(QWidget):
         draw_stickman(painter, self.stickman)
 
     def mousePressEvent(self, event):
+        if event.button() != Qt.LeftButton:
+            return
+
         mouse_x = event.globalPos().x()
         mouse_y = event.globalPos().y()
 
@@ -105,9 +108,7 @@ class StickmanOverlay(QWidget):
         )
 
         self.stickman.ragpoints = create_ragpoints(
-            self.stickman.joints,
-            self.stickman.x,
-            self.stickman.y
+            self.stickman.joints
         )
 
         self.stickman.flying = False
@@ -129,6 +130,8 @@ class StickmanOverlay(QWidget):
         move_grab_part(self.stickman, mouse_x, mouse_y, self.drag_offset_x, self.drag_offset_y)
 
     def mouseReleaseEvent(self, event):
+        if event.button() != Qt.LeftButton:
+            return
         self.release_stickman()
 
     def release_stickman(self):
@@ -202,6 +205,9 @@ class StickmanOverlay(QWidget):
 
                 if (cursor.x(), cursor.y()) != (self.mouse_old_x, self.mouse_old_y):
                     self.follow_mouse(cursor.x(), cursor.y())
+                else:
+                    self.drag_velocity_x = 0
+                    self.drag_velocity_y = 0
 
         tight_rect = self.compute_mask_rect()
 

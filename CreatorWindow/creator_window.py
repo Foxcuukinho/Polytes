@@ -121,7 +121,7 @@ class TitleBar(QWidget):
 
         self.title_label = QLabel(title)
         self.title_label.setStyleSheet(
-            f"color: {TITLE_TEXT_COLOR}; font-family: 'Comic Relief', Arial, sans-serif; "
+            f"color: {TITLE_TEXT_COLOR}; font-family: 'Comic Relief'; "
             f"font-size: 13px; font-weight: bold; letter-spacing: 0.5px; background: transparent;"
         )
 
@@ -182,9 +182,11 @@ class CreatorWindow(QWidget):
         self.manager = manager
         self.selected_color = QColor("#8ABBD8")
 
+        self.setWindowTitle("Comic Relief")
         self.setWindowFlags(Qt.FramelessWindowHint | Qt.Window)
         self.setAttribute(Qt.WA_TranslucentBackground)
-        self.setFixedSize(265, 440)
+        self.setMinimumSize(265, 440)
+        self.resize(265, 440)
 
         self._is_maximized = False
         self._normal_geometry = None
@@ -193,7 +195,7 @@ class CreatorWindow(QWidget):
         outer_layout.setContentsMargins(0, 0, 0, 0)
         outer_layout.setSpacing(0)
 
-        self.title_bar = TitleBar("Stickman creator")
+        self.title_bar = TitleBar("Comic Relief")
         outer_layout.addWidget(self.title_bar)
 
         self.body = BodyContainer()

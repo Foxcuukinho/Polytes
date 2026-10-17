@@ -33,7 +33,6 @@ class Stickman:
         screen_x, _, screen_width, _ = get_screen_geometry()
         self.ground_limit = (screen_x, screen_width)
         self.overlap_windows = []
-        self.ground_window_handle = None
 
         # Miscellaneous
         self.head_radius = HOLLOW_HEAD_DIAMETER //2 if self.hollow_head else FILLED_HEAD_DIAMETER // 2
@@ -67,5 +66,5 @@ class Stickman:
 
 
         self.joints = calculate_joints(self.current_frame, self, self.head_radius)
-        self.ragpoints = create_ragpoints(self.joints, self.x, self.y)
+        self.ragpoints = create_ragpoints(self.joints)
 
