@@ -1,9 +1,8 @@
-# Polytes - Principles
+# Polytes - Principes
+## Objective/Description
 
 Polytes is a stickman that lives on your computer. The computer is his home: windows, icons, and everything else are just more objects in the house that he can interact with.
-
 The whole computer is his house: the system, apps, websites, files, everything. If it is on the screen, it is part of his world.
-
 He does not just react to his house: he interacts with it and can change it. The goal is for him to feel like something truly alive inside the computer.
 
 ## Pillars

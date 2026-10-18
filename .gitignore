@@ -27,3 +27,5 @@ Polytes.AppDir/
 # Pacotes gerados
 *.deb
 *.AppImage
+
+/.obsidian/
