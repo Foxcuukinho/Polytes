@@ -70,7 +70,7 @@ Because testing has been limited, bugs or compatibility issues may occur on othe
 
 If you encounter any bugs or compatibility issues, please report them on [GitHub Issues](https://github.com/Foxcuukinho/Polytes/issues).
 
-The itch.io page is still being prepared, so the current builds are available on GitHub for now.
+The itch.io page is now available! You can download Polytes from [itch.io](https://foxcuukinho.itch.io/polytes) or directly from the GitHub Releases page.
 
 ---
 
