@@ -38,3 +38,12 @@ Drop ideas at the end of the file. See README.md for statuses and rules.
 ## Semantic Names
 
 
+<hr>
+
+## Parkour Physics
+
+   - [New] The stickman can do parkour with the windows and objects, with real physics, impulse etc
+
+# .
+
+[New] Ao colocar o .stickfigure em programas de desenho, ele abre uma imagemq ue você pode edtiar a aparência do stickman
